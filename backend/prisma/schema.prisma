@@ -1,0 +1,154 @@
+// ---------- Historiques d’objectifs ----------
+model ObjectiveHistory {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  period String
+
+  // snapshot des mêmes champs que l'écran du front
+  // { ca: number, marge: number, visites: number, one2one: number, workshops: number }
+  values Json
+
+  // auteur du snapshot (id ou email)
+  by String
+
+  ts DateTime @default(now())
+}
+
+// ---------- Client & DB ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+enum Role {
+  ADMIN
+  MANAGER
+  BUSINESS_DEVELOPER
+  GUEST
+}
+
+enum DealStatus {
+  DRAFT
+  OPEN
+  WON
+  LOST
+}
+
+enum VisitStatus {
+  PLANNED
+  DONE
+  CANCELED
+}
+
+// ---------- Modèles ----------
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String?
+  role         Role    @default(GUEST)
+  isActive     Boolean @default(true)
+
+  // Relations
+  deals              Deal[]             @relation("UserDeals")
+  visits             Visit[]
+  objectives         Objective[] // ⇐ relation opposée dans Objective.user
+  objectiveHistories ObjectiveHistory[]
+  histories          DealHistory[]      @relation("UserDealHistories")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Deal {
+  id String @id @default(cuid())
+
+  // ✅ Champs “FR” alignés avec le front
+  projet       String
+  client       String
+  secteur      String
+  dateCreation DateTime @default(now())
+  typeDeal     String?
+  commercial   String?
+  supportAV    String?
+  semestre     String
+  ca           Float    @default(0)
+  marge        Float    @default(0)
+  statut       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations (optionnelles)
+  ownerId String?
+  owner   User?   @relation("UserDeals", fields: [ownerId], references: [id])
+
+  histories DealHistory[]
+  visits    Visit[]
+}
+
+model DealHistory {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id])
+
+  changedById String?
+  changedBy   User?   @relation("UserDealHistories", fields: [changedById], references: [id])
+
+  changedAt DateTime @default(now())
+  diff      Json
+}
+
+model Visit {
+  id String @id @default(cuid())
+
+  // ✅ Aligné sur le front "Nouvelle visite"
+  date          DateTime
+  type          String
+  semestre      String
+  client        String
+  secteur       String
+  sujet         String
+  accompagnants String?
+
+  // (Relation au deal non utilisée par le front → on la laisse optionnelle)
+  dealId String?
+  deal   Deal?   @relation(fields: [dealId], references: [id])
+
+  // (Relation user optionnelle)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  status VisitStatus @default(PLANNED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- OBJECTIVES (alignés front) ----------
+model Objective {
+  id String @id @default(cuid())
+
+  // ⇐ relation opposée de User.objectives
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  period    String
+  ca        Float
+  marge     Float
+  visites   Int
+  one2one   Int
+  workshops Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Pas de name=... pour exposer where: { userId_period: { ... } }
+  @@unique([userId, period])
+}
