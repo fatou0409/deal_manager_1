@@ -4,8 +4,7 @@
 export const ROLES = {
   ADMIN: "ADMIN",
   MANAGER: "MANAGER",
-  BD: "BD",
-  BUSINESS_DEVELOPER: "BD",   // ⬅️ AJOUTER CETTE LIGNE
+  BUSINESS_DEVELOPER: "BD",
   GUEST: "GUEST"
 };
 
@@ -24,8 +23,8 @@ const ROLE_ALIASES = {
   Administrateur: "ADMIN",
   MANAGER: "MANAGER",
   Manager: "MANAGER",
-  "Business Developer": "BD",
   BD: "BD",
+  "Business Developer": "BD",
   Invité: "GUEST",
   GUEST: "GUEST",
 };

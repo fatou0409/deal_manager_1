@@ -1,14 +1,14 @@
-// frontapp/src/routes/ProtectedRoute.jsx
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthProvider.jsx";
-import PropTypes from "prop-types";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 
-export default function ProtectedRoute({ children }) {
-  const { token } = useAuth();
-  if (!token) return <Navigate to="/login" replace />;
-  return children;
+export default function ProtectedRoute() {
+  const { user, isLoading } = useAuth();
+
+  const location = useLocation();
+  if (isLoading) return null; // ou un spinner léger si tu veux
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  return <Outlet />;
 }
-
-ProtectedRoute.propTypes = {
-  children: PropTypes.node,
-};

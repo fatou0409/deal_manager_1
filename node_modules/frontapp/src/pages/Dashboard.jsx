@@ -8,7 +8,6 @@ import DataTable from "../components/DataTable";
 import { useAuth } from "../auth/AuthProvider";
 import { useStore } from "../store/useStore";
 
-
 // Chart.js
 import {
   Chart as ChartJS,
@@ -35,6 +34,23 @@ ChartJS.register(
   Legend
 );
 
+// ✅ normalise les objectifs quelle que soit la clé (visite/visites, workshop/workshops)
+function normalizeObjective(obj = {}) {
+  return {
+    ca: Number(obj.ca ?? 0),
+    marge: Number(obj.marge ?? 0),
+    visite: Number(obj.visites ?? obj.visite ?? 0),
+    one2one: Number(obj.one2one ?? 0),
+    workshop: Number(obj.workshops ?? obj.workshop ?? 0),
+  };
+}
+
+// ✅ format entier FR sans unité (pour les cartes du bandeau)
+function fmtInt(n) {
+  const v = Number(n || 0);
+  return new Intl.NumberFormat("fr-FR").format(Math.round(v));
+}
+
 export default function Dashboard() {
   const { state, dispatch } = useStore();
   const { can } = useAuth();
@@ -42,8 +58,8 @@ export default function Dashboard() {
   const [semestre, setSemestre] = useState(state.selectedSemestre);
   const [tab, setTab] = useState("table"); // "table" | "secteur" | "commercial" | "charts"
 
-  const objectives =
-    state.objectives[semestre] || { ca: 0, marge: 0, visite: 0, one2one: 0, workshop: 0 };
+  // utilise la normalisation
+  const objectives = normalizeObjective(state.objectives[semestre] || {});
 
   // Filtrage par semestre
   const dealsS = useMemo(
@@ -55,7 +71,7 @@ export default function Dashboard() {
     [state.visits, semestre]
   );
 
-  // Agrégats du semestre (ici CA/Marge sur tous les deals)
+  // Agrégats du semestre
   const sums = useMemo(() => {
     const ca = dealsS.reduce((acc, d) => acc + Number(d.ca || 0), 0);
     const marge = dealsS.reduce((acc, d) => acc + Number(d.marge || 0), 0);
@@ -221,14 +237,15 @@ export default function Dashboard() {
   };
 
   return (
-  <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* HERO / HEADER */}
-      <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-500 to-black text-white shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-500 to-black text-white shadow-2xl">
         <div
           className="absolute inset-0 opacity-15 pointer-events-none"
           style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "16px 16px" }}
         />
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
+        {/* voile léger sans flou */}
+        <div className="absolute inset-0 bg-white/5" />
         <div className="relative p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
@@ -248,19 +265,24 @@ export default function Dashboard() {
           {/* Bandeau objectifs (lecture) + CTA vers page d’édition */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-3">
             {[
-              { label: "CA (CFA)", value: fmtFCFA(objectives.ca) },
-              { label: "Marge (CFA)", value: fmtFCFA(objectives.marge) },
+              { label: "CA (CFA)", value: fmtInt(objectives.ca) },
+              { label: "Marge (CFA)", value: fmtInt(objectives.marge) },
               { label: "Visites", value: objectives.visite ?? 0 },
               { label: "One-2-One", value: objectives.one2one ?? 0 },
               { label: "Workshops", value: objectives.workshop ?? 0 },
             ].map((x, i) => (
               <div
                 key={x.label}
-                className="rounded-xl border border-white/15 bg-white/20 backdrop-blur-lg p-3 shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-2xl animate-fade-in"
-                style={{ animationDelay: `${i * 0.08 + 0.1}s` }}
+                className="rounded-xl border border-white/20 bg-white/20 p-3 shadow-lg transition-transform duration-300 hover:translate-y-0.5 select-none"
+                style={{ animationDelay: `${i * 0.06 + 0.06}s` }}
               >
-                <div className="text-xs text-white/80">{x.label}</div>
-                <div className="text-xl font-semibold">{x.value}</div>
+                <div className="text-xs text-white/85">{x.label}</div>
+                <div
+                  className="text-xl font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
+                  title={String(x.value)}
+                >
+                  {x.value}
+                </div>
               </div>
             ))}
           </div>
@@ -268,7 +290,7 @@ export default function Dashboard() {
           {can("objectives:update") && (
             <div className="mt-3">
               <Link
-                to="/objectives"
+                to="/objectives/edit"
                 className="inline-flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 border border-white/20 hover:bg-orange-50 transition text-sm"
               >
                 Gérer les objectifs
@@ -282,8 +304,8 @@ export default function Dashboard() {
       </div>
 
       {/* Onglets */}
-  <div className="flex flex-wrap gap-2 mt-2">
-        {[ 
+      <div className="flex flex-wrap gap-2 mt-2">
+        {[
           { id: "table", label: "Tableau" },
           { id: "secteur", label: "Par secteur" },
           { id: "commercial", label: "Par commercial" },
@@ -355,7 +377,7 @@ export default function Dashboard() {
             <Doughnut data={donutData} options={donutOptions} />
           </div>
 
-          {/* NEW: Bar comparatif pour l'activité des visites */}
+          {/* Bar comparatif visites */}
           <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm xl:col-span-3">
             <div className="text-sm font-semibold mb-2">Activité de visites — {semestre} (réalisé vs objectif)</div>
             <Bar data={visitsBarData} options={visitsBarOptions} />

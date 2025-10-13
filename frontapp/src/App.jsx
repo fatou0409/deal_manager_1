@@ -1,69 +1,70 @@
-// ...existing code...
 // src/App.jsx
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AppShell from "./components/AppShell";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Objectives from "./pages/Objectives";
-import Deals from "./pages/Deals";
-import Visits from "./pages/Visits";
 import Login from "./pages/Login";
 import AdminUsers from "./pages/AdminUsers";
 import ChangePassword from "./pages/ChangePassword";
 import ResetAdmin from "./pages/ResetAdmin";
-import Pipe from "./pages/Pipe"; 
+import Pipe from "./pages/Pipe";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
-// Composant de Layout pour les routes protégées
-const ProtectedLayout = () => (
-  <ProtectedRoute>
-    <Outlet />
-  </ProtectedRoute>
-);
+// Pages
+import DealsList from "./pages/deals/DealsList";
+import DealForm from "./pages/deals/DealForm";
+import VisitsList from "./pages/visits/VisitsList";
+import VisitForm from "./pages/visits/VisitForm";
+import Objectives from "./pages/objectives/Objectives"; // <- fusion edit + history
 
 export default function App() {
   const badges = { deals: undefined, visits: undefined };
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900">
-      {/* Ta barre du haut existante */}
       <Navbar />
 
-      {/* Coque + Sidebar blanche + contenu */}
-      <AppShell badges={badges}>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-admin" element={<ResetAdmin />} />
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/reset-admin" element={<ResetAdmin />} />
 
-          {/* Compte */}
-          <Route element={<ProtectedLayout />}>
-            <Route path="/account/change-password" element={<ChangePassword />} />
-          </Route>
+        {/* Protégé (sans sidebar) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/account/change-password" element={<ChangePassword />} />
 
-          {/* Zones protégées */}
-          <Route element={<ProtectedLayout />}>
+          {/* Protégé + sidebar (AppShell rend Sidebar + <Outlet/>) */}
+          <Route element={<AppShell badges={badges} />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/objectives" element={<Objectives />} />
-            <Route path="/deals" element={<Deals />} />
             <Route path="/pipe" element={<Pipe />} />
-            <Route path="/visits" element={<Visits />} />
-          </Route>
 
-          {/* Admin */}
-          <Route element={<ProtectedLayout />}>
+            {/* Deals */}
+            <Route path="/deals" element={<DealsList />} />
+            <Route path="/deals/new" element={<DealForm />} />
+
+            {/* Visits */}
+            <Route path="/visits" element={<VisitsList />} />
+            <Route path="/visits/new" element={<VisitForm />} />
+
+            {/* Objectives (même composant sur 2 routes) */}
+            <Route path="/objectives/edit" element={<Objectives />} />
+            <Route path="/objectives/history" element={<Objectives />} />
+            {/* Optionnel : racine objectives -> edit
+                <Route path="/objectives" element={<Navigate to="/objectives/edit" replace />} />
+            */}
+
+            {/* Admin */}
             <Route path="/admin/users" element={<AdminUsers />} />
           </Route>
+        </Route>
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
-          
-      {/* Ton footer d’origine */}
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
       <Footer />
     </div>
   );
