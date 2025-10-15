@@ -7,6 +7,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 import { useToast } from "../../components/ToastProvider";
+import { api } from "../../utils/api";
 
 const emptyVisit = {
   id: "",
@@ -31,27 +32,36 @@ export default function VisitForm() {
     setForm((f) => ({ ...f, semestre: state.selectedSemestre }));
   }, [state.selectedSemestre]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!CAN_CREATE) return toast.show("Tu n’as pas le droit de créer une visite.", "error");
 
-    const id = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
-    dispatch({ type: "ADD_VISIT", payload: { ...form, id } });
-    toast.show("Visite créée avec succès.", "success");
-    setForm({ ...emptyVisit, semestre: state.selectedSemestre });
+    try {
+      const saved = await api.post("/visits", form);
+      dispatch({ type: "ADD_VISIT", payload: saved || form });
+      toast.show("Visite créée avec succès.", "success");
+      setForm({ ...emptyVisit, semestre: state.selectedSemestre });
+    } catch (err) {
+      toast.show(`Échec création visite : ${err.message}`, "error");
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-600 to-black text-white p-6 shadow-2xl">
-        <h2 className="text-2xl font-bold">Nouvelle visite</h2>
-        <p className="text-sm opacity-80 mt-1">Planifie et documente ta visite client.</p>
+    <div className="space-y-6 animate-fade-in">
+      {/* HERO / HEADER */}
+      <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-500 to-black text-white shadow-2xl">
+        <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
+        <div className="absolute inset-0 bg-white/5" />
+        <div className="relative p-6 md:p-8">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Nouvelle visite</h2>
+          <p className="mt-1 text-white/80 text-sm">Planifie et documente ta visite client.</p>
+        </div>
       </div>
 
+      {/* FORM */}
       <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Bloc 1 : Planification */}
-        <section className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow">
+        {/* Planification */}
+        <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
           <h3 className="font-semibold text-orange-600 mb-3">Planification</h3>
           <div className="space-y-3">
             <FormField label="Date" required>
@@ -68,8 +78,8 @@ export default function VisitForm() {
           </div>
         </section>
 
-        {/* Bloc 2 : Détails client */}
-        <section className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow">
+        {/* Détails client */}
+        <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
           <h3 className="font-semibold text-orange-600 mb-3">Détails client</h3>
           <div className="space-y-3">
             <FormField label="Client" required>
@@ -92,14 +102,26 @@ export default function VisitForm() {
 
         {/* Actions */}
         <div className="md:col-span-2 flex justify-end gap-2">
-          <button disabled={!CAN_CREATE} className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow">
+          <button
+            disabled={!CAN_CREATE}
+            className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow"
+          >
             Enregistrer
           </button>
-          <button type="button" onClick={() => setForm({ ...emptyVisit, semestre: state.selectedSemestre })} className="px-4 py-2 rounded-xl bg-white text-black border border-black/10 hover:bg-orange-50 transition shadow">
+          <button
+            type="button"
+            onClick={() => setForm({ ...emptyVisit, semestre: state.selectedSemestre })}
+            className="px-4 py-2 rounded-xl bg-white text-black border border-black/10 hover:bg-orange-50 transition shadow"
+          >
             Réinitialiser
           </button>
         </div>
       </form>
+
+      <style>{`
+        @keyframes fade-in { 0% {opacity:0; transform: translateY(10px) scale(0.98);} 100% {opacity:1; transform: translateY(0) scale(1);} }
+        .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both; }
+      `}</style>
     </div>
   );
 }

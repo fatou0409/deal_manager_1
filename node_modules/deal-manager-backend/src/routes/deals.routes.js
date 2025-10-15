@@ -1,4 +1,3 @@
-// src/routes/deals.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
 
@@ -6,14 +5,18 @@ const router = Router();
 
 function parseDate(d) {
   if (!d) return new Date();
-  // "YYYY-MM-DD" => milieu de journée UTC pour éviter décalages
   return new Date(`${d}T12:00:00Z`);
 }
 
-// GET /api/deals
-router.get("/", async (_req, res, next) => {
+// GET /api/deals?semestre=2025-S1
+router.get("/", async (req, res, next) => {
   try {
-    const items = await prisma.deal.findMany({ orderBy: { updatedAt: "desc" } });
+    const { semestre } = req.query;
+    const where = semestre ? { semestre: String(semestre) } : {};
+    const items = await prisma.deal.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+    });
     res.json(items);
   } catch (e) { next(e); }
 });
@@ -23,7 +26,7 @@ router.post("/", async (req, res, next) => {
   try {
     const b = req.body || {};
     const s = (b.statut || "").toString().toLowerCase();
-    const isGagne = s === "gagné" || s === "gagne" || s === "won";
+    const isGagne = s.startsWith("gagn") || s === "won";
 
     const created = await prisma.deal.create({
       data: {
@@ -50,7 +53,7 @@ router.put("/:id", async (req, res, next) => {
     const { id } = req.params;
     const b = req.body || {};
     const s = (b.statut ?? "").toString().toLowerCase();
-    const isGagne = s === "gagné" || s === "gagne" || s === "won";
+    const isGagne = s.startsWith("gagn") || s === "won";
 
     const updated = await prisma.deal.update({
       where: { id },

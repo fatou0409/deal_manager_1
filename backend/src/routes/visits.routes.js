@@ -1,4 +1,3 @@
-// src/routes/visits.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
 
@@ -9,10 +8,15 @@ function parseDate(d) {
   return new Date(`${d}T12:00:00Z`);
 }
 
-// GET /api/visits
-router.get("/", async (_req, res, next) => {
+// GET /api/visits?semestre=2025-S1
+router.get("/", async (req, res, next) => {
   try {
-    const items = await prisma.visit.findMany({ orderBy: { date: "desc" } });
+    const { semestre } = req.query;
+    const where = semestre ? { semestre: String(semestre) } : {};
+    const items = await prisma.visit.findMany({
+      where,
+      orderBy: { date: "desc" },
+    });
     res.json(items);
   } catch (e) { next(e); }
 });

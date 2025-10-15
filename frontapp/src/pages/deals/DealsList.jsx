@@ -1,13 +1,13 @@
 // src/pages/deals/DealsList.jsx
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
-import { fmtFCFA } from "../../utils/format";
+import { fmtFCFA, uid } from "../../utils/format";
 import { Link } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { uid } from "../../utils/format";
+import { api } from "../../utils/api";
 
 export default function DealsList() {
   const { state, dispatch } = useStore();
@@ -17,6 +17,19 @@ export default function DealsList() {
   const CAN_UPDATE = can("deal:update");
   const CAN_DELETE = can("deal:delete");
 
+  // Chargement initial depuis l’API
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await api.get(`/deals?semestre=${encodeURIComponent(state.selectedSemestre)}`);
+        dispatch({ type: "SET_DEALS", payload: rows || [] });
+      } catch (e) {
+        // on garde le store local si l’API ne répond pas
+        console.warn("GET /deals failed:", e.message);
+      }
+    })();
+  }, [state.selectedSemestre, dispatch]);
+
   const dealsOfSemestre = useMemo(
     () => state.deals.filter((d) => d.semestre === state.selectedSemestre),
     [state.deals, state.selectedSemestre]
@@ -24,14 +37,18 @@ export default function DealsList() {
 
   const onEdit = (row) => {
     if (!CAN_UPDATE) return toast.show("Tu n’as pas le droit de modifier un deal.", "error");
-    // Si page d'édition, redirige vers /deals/:id/edit
+    // redirection si tu as une page d'édition
   };
 
-  const onDelete = (id) => {
+  const onDelete = async (id) => {
     if (!CAN_DELETE) return toast.show("Tu n’as pas le droit de supprimer un deal.", "error");
-    if (confirm("Supprimer ce deal ?")) {
+    if (!confirm("Supprimer ce deal ?")) return;
+    try {
+      await api.del(`/deals/${id}`);
       dispatch({ type: "DELETE_DEAL", payload: id });
       toast.show("Deal supprimé.", "success");
+    } catch (e) {
+      toast.show(`Suppression impossible : ${e.message}`, "error");
     }
   };
 
@@ -44,18 +61,12 @@ export default function DealsList() {
       {
         key: "ca",
         header: "CA",
-        render: (r) => {
-          const isGagne = (r.statut || "").toLowerCase().startsWith("gagn");
-          return fmtFCFA(isGagne ? r.ca : 0);
-        },
+        render: (r) => (/gagn[ée]?/i.test(r.statut || "") ? fmtFCFA(r.ca) : fmtFCFA(0)),
       },
       {
         key: "marge",
         header: "Marge",
-        render: (r) => {
-          const isGagne = (r.statut || "").toLowerCase().startsWith("gagn");
-          return fmtFCFA(isGagne ? r.marge : 0);
-        },
+        render: (r) => (/gagn[ée]?/i.test(r.statut || "") ? fmtFCFA(r.marge) : fmtFCFA(0)),
       },
       { key: "statut", header: "Statut" },
       {
@@ -80,8 +91,8 @@ export default function DealsList() {
     [CAN_UPDATE, CAN_DELETE]
   );
 
-  // Handler d'import (CSV/XLSX) — mappe les colonnes basiques
-  const handleImportDeals = (rowsLower) => {
+  // Import CSV/XLSX → POST API
+  const handleImportDeals = async (rowsLower) => {
     const normalized = rowsLower.map((r) => ({
       id: uid(),
       projet: r.projet || "",
@@ -98,35 +109,56 @@ export default function DealsList() {
       dateDerniereModif: new Date().toISOString().slice(0, 10),
     }));
 
-    normalized.forEach((d) => dispatch({ type: "ADD_DEAL", payload: d }));
-    toast.show(`Import de ${normalized.length} deal(s) réussi.`, "success");
+    try {
+      // si tu n’as pas de /deals/bulk, on fait simple : POST 1 par 1
+      for (const d of normalized) {
+        const saved = await api.post("/deals", d);
+        dispatch({ type: "ADD_DEAL", payload: saved || d });
+      }
+      toast.show(`Import de ${normalized.length} deal(s) réussi.`, "success");
+    } catch (e) {
+      toast.show(`Import interrompu : ${e.message}`, "error");
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-600 to-black text-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Liste des Deals — {state.selectedSemestre}</h2>
-          <div className="flex items-center gap-3">
-            {/* Import / Export */}
-            <ImportExportBar
-              resource="deal"
-              title={`Deals — ${state.selectedSemestre}`}
-              filename={`Deals-${state.selectedSemestre}`}
-              columns={columns.filter(c => c.key && !c.key.startsWith("_"))}
-              rows={dealsOfSemestre}
-              onImportRows={handleImportDeals}
-            />
-            <Link to="/deals/new" className="rounded-xl bg-white/10 border border-white/20 px-3 py-1.5 text-sm hover:bg-white/20">
-              + Nouveau deal
-            </Link>
+    <div className="space-y-6 animate-fade-in">
+      {/* HERO / HEADER */}
+      <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-gradient-to-tr from-orange-500 to-black text-white shadow-2xl">
+        <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
+        <div className="absolute inset-0 bg-white/5" />
+        <div className="relative p-6 md:p-8">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+              Liste des Deals — {state.selectedSemestre}
+            </h2>
+
+            <div className="flex items-center gap-3">
+              <ImportExportBar
+                resource="deal"
+                title={`Deals — ${state.selectedSemestre}`}
+                filename={`Deals-${state.selectedSemestre}`}
+                columns={columns.filter(c => c.key && !c.key.startsWith("_"))}
+                rows={dealsOfSemestre}
+                onImportRows={handleImportDeals}
+              />
+              <Link to="/deals/new" className="inline-flex items-center gap-2 rounded-xl bg-white/10 text-white px-3 py-1.5 border border-white/20 hover:bg-white/20 transition text-sm">
+                + Nouveau deal
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-lg">
+      {/* TABLE */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
         <DataTablePro columns={columns} rows={dealsOfSemestre} />
       </div>
+
+      <style>{`
+        @keyframes fade-in { 0% {opacity:0; transform: translateY(10px) scale(0.98);} 100% {opacity:1; transform: translateY(0) scale(1);} }
+        .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both; }
+      `}</style>
     </div>
   );
 }

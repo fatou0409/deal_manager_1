@@ -9,6 +9,7 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 import { uid } from "../../utils/format";
+import { api } from "../../utils/api"; // ⬅️ important: persistance API
 
 const emptyDeal = {
   id: "",
@@ -30,38 +31,41 @@ function todayStr() { return new Date().toISOString().slice(0, 10); }
 
 export default function DealForm() {
   const { state, dispatch } = useStore();
-  const { can } = useAuth();
+  const { can, token } = useAuth(); // ⬅️ récup token si besoin d’Authorization
   const toast = useToast();
 
   const CAN_CREATE = can("deal:create");
-
   const [form, setForm] = useState({ ...emptyDeal, semestre: state.selectedSemestre });
-  const [gagne, setGagne]= useState(false);
 
   useEffect(() => {
     setForm((f) => ({ ...f, semestre: state.selectedSemestre }));
   }, [state.selectedSemestre]);
-  
 
-
-
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!CAN_CREATE) return toast.show("Tu n’as pas le droit de créer un deal.", "error");
 
-    const isGagne = (form.statut || "").toLowerCase().startsWith("gagn");
+    // ⬇️ PLUS de remise à 0 selon le statut : on prend ce que l’utilisateur saisit
     const payload = {
       ...form,
-      id: uid(),
-      ca: isGagne ? Number(form.ca || 0) : 0,
-      marge: isGagne ? Number(form.marge || 0) : 0,
+      // id côté front facultatif; le back génère un cuid s’il n’est pas envoyé
+      id: form.id || uid(),
+      ca: Number(form.ca || 0),
+      marge: Number(form.marge || 0),
       dateCreation: form.dateCreation || todayStr(),
       dateDerniereModif: todayStr(),
     };
 
-    dispatch({ type: "ADD_DEAL", payload });
-    toast.show("Deal créé avec succès.", "success");
-    setForm({ ...emptyDeal, semestre: state.selectedSemestre });
+    try {
+      // Persistance API (si ton API nécessite un Bearer token, api.post gère { token })
+      const saved = await api.post("/deals", payload, { token });
+      // Mise à jour du store avec la réponse serveur (id, timestamps…)
+      dispatch({ type: "ADD_DEAL", payload: saved || payload });
+      toast.show("Deal créé avec succès.", "success");
+      setForm({ ...emptyDeal, semestre: state.selectedSemestre });
+    } catch (err) {
+      toast.show(`Échec création deal : ${err.message}`, "error");
+    }
   };
 
   return (
@@ -119,19 +123,13 @@ export default function DealForm() {
               </FormField>
 
               <FormField label="Statut" required>
-                <Select value={form.statut} onChange={(v) => 
-                  {
-                    setForm({ ...form, statut: v });
-                    setGagne( (v || "").includes("Deal gagné"));
-                  }
-                } options={STATUTS} />
+                <Select value={form.statut} onChange={(v) => setForm({ ...form, statut: v })} options={STATUTS} />
               </FormField>
             </div>
           </section>
 
-          {/* Card 3 - Chiffres & Statut (full width) */}
-          {
-            gagne && (<section className="md:col-span-2 rounded-2xl border border-black/10 bg-white/80 p-5 shadow">
+          {/* Card 3 - Chiffres clés (toujours visibles) */}
+          <section className="md:col-span-2 rounded-2xl border border-black/10 bg-white/80 p-5 shadow">
             <h3 className="font-semibold text-orange-600 mb-3">Chiffres clés</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Chiffre d'affaire (CFA)">
@@ -141,9 +139,7 @@ export default function DealForm() {
                 <NumberInput value={form.marge} onChange={(v) => setForm({ ...form, marge: v })} />
               </FormField>
             </div>
-            <p className="text-xs text-black/50 mt-2">Note : CA & Marge ne sont comptabilisés que si le statut commence par “Gagn…”.</p>
-          </section>)
-          }
+          </section>
         </div>
 
         {/* Actions */}

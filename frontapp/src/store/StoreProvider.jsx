@@ -73,6 +73,7 @@ export function StoreProvider({ children }) {
           api('/objectives', { token }),
         ]);
         dispatch({ type: 'HYDRATE', payload: { deals: deals.items || [], visits, objectives: (objectives || []).reduce((acc, o) => { acc[o.period] = o; return acc; }, {}) } });
+        dispatch({ type: 'HYDRATE', payload: { deals: deals || [], visits, objectives: (objectives || []).reduce((acc, o) => { acc[o.period] = o; return acc; }, {}) } });
       } catch (e) {
         console.error('Hydratation du store échouée', e);
       }

@@ -9,15 +9,21 @@ import Login from "./pages/Login";
 import AdminUsers from "./pages/AdminUsers";
 import ChangePassword from "./pages/ChangePassword";
 import ResetAdmin from "./pages/ResetAdmin";
-import Pipe from "./pages/Pipe";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
-// Pages
+// Deals & Visits
 import DealsList from "./pages/deals/DealsList";
 import DealForm from "./pages/deals/DealForm";
 import VisitsList from "./pages/visits/VisitsList";
 import VisitForm from "./pages/visits/VisitForm";
-import Objectives from "./pages/objectives/Objectives"; // <- fusion edit + history
+
+// Objectives
+import ObjectivesList from "./pages/objectives/ObjectivesList";
+import ObjectivesForm from "./pages/objectives/ObjectivesForm";
+
+// Pipe
+import PipeList from "./pages/pipe/PipeList";
+import PipeForm from "./pages/pipe/PipeForm";
 
 export default function App() {
   const badges = { deals: undefined, visits: undefined };
@@ -36,10 +42,13 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/account/change-password" element={<ChangePassword />} />
 
-          {/* Protégé + sidebar (AppShell rend Sidebar + <Outlet/>) */}
+          {/* Protégé + sidebar */}
           <Route element={<AppShell badges={badges} />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/pipe" element={<Pipe />} />
+
+            {/* Pipe */}
+            <Route path="/pipe" element={<PipeList />} />
+            <Route path="/pipe/new" element={<PipeForm />} />
 
             {/* Deals */}
             <Route path="/deals" element={<DealsList />} />
@@ -49,12 +58,11 @@ export default function App() {
             <Route path="/visits" element={<VisitsList />} />
             <Route path="/visits/new" element={<VisitForm />} />
 
-            {/* Objectives (même composant sur 2 routes) */}
-            <Route path="/objectives/edit" element={<Objectives />} />
-            <Route path="/objectives/history" element={<Objectives />} />
-            {/* Optionnel : racine objectives -> edit
-                <Route path="/objectives" element={<Navigate to="/objectives/edit" replace />} />
-            */}
+            {/* Objectives */}
+            <Route path="/objectives" element={<ObjectivesList />} />
+            <Route path="/objectives/new" element={<ObjectivesForm />} />
+            {/* filet de sécurité pour anciens chemins */}
+            <Route path="/objectives/*" element={<Navigate to="/objectives" replace />} />
 
             {/* Admin */}
             <Route path="/admin/users" element={<AdminUsers />} />

@@ -7,14 +7,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // déjà utile si tu utilises /api
+      // Si tu utilises VITE_API_URL="/api" côté front, ces proxys couvrent l'API locale.
       '/api': {
         target: 'http://localhost:4001',
         changeOrigin: true,
         secure: false,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
-      // >>>>> ces 3 lignes rendent TES chemins existants fonctionnels sans toucher au code
+      // Chemins directs encore présents dans ton code historique
       '/deals':      { target: 'http://localhost:4001', changeOrigin: true, secure: false },
       '/visits':     { target: 'http://localhost:4001', changeOrigin: true, secure: false },
       '/objectives': { target: 'http://localhost:4001', changeOrigin: true, secure: false },

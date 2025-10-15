@@ -51,6 +51,12 @@ function fmtInt(n) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(v));
 }
 
+// ✅ garde anti-NaN
+const safeN = (n) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? v : 0;
+};
+
 export default function Dashboard() {
   const { state, dispatch } = useStore();
   const { can } = useAuth();
@@ -71,16 +77,24 @@ export default function Dashboard() {
     [state.visits, semestre]
   );
 
+  // Pour CA/Marge, on ne comptabilise que les deals "gagnés" (blind côté front)
+  const dealsWon = useMemo(
+    () => dealsS.filter((d) => (d.statut || "").toLowerCase().startsWith("gagn")),
+    [dealsS]
+  );
+
   // Agrégats du semestre
   const sums = useMemo(() => {
-    const ca = dealsS.reduce((acc, d) => acc + Number(d.ca || 0), 0);
-    const marge = dealsS.reduce((acc, d) => acc + Number(d.marge || 0), 0);
+    const ca = dealsWon.reduce((acc, d) => acc + safeN(d.ca), 0);
+    const marge = dealsWon.reduce((acc, d) => acc + safeN(d.marge), 0);
     const nVisite = visitsS.filter((v) => v.type === "Visite").length;
     const nOne = visitsS.filter((v) => v.type === "One-to-One").length;
     const nWorkshop = visitsS.filter((v) => v.type === "Workshop").length;
     const byStatus = groupByStatus(dealsS);
     return { ca, marge, nVisite, nOne, nWorkshop, byStatus };
-  }, [dealsS, visitsS]);
+  }, [dealsWon, visitsS, dealsS]);
+
+  const hasAnyData = dealsS.length > 0 || visitsS.length > 0;
 
   const pct = (num, den) => {
     const d = Number(den || 0);
@@ -112,8 +126,8 @@ export default function Dashboard() {
     for (const d of dealsS) {
       const k = d[key] || "—";
       if (!group[k]) group[k] = { ca: 0, marge: 0, deals: 0 };
-      group[k].ca += Number(d.ca || 0);
-      group[k].marge += Number(d.marge || 0);
+      group[k].ca += safeN(d.ca);
+      group[k].marge += safeN(d.marge);
       group[k].deals += 1;
     }
     for (const v of visitsS) {
@@ -167,6 +181,7 @@ export default function Dashboard() {
   };
   const barOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: "top" },
       tooltip: {
@@ -201,6 +216,7 @@ export default function Dashboard() {
   };
   const visitsBarOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: "top" },
       tooltip: { enabled: true },
@@ -233,6 +249,7 @@ export default function Dashboard() {
   };
   const donutOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: { legend: { position: "bottom" } },
   };
 
@@ -314,6 +331,7 @@ export default function Dashboard() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
+            aria-pressed={tab === t.id}
             className={`px-3 py-1.5 rounded-full border text-sm transition-all duration-200 focus:ring-2 focus:ring-orange-400 focus:outline-none ${
               tab === t.id
                 ? "bg-orange-600 text-white border-orange-600 shadow"
@@ -337,7 +355,13 @@ export default function Dashboard() {
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-black">Tableau de suivi</h3>
           <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            <DataTable columns={columns} rows={tableRows} />
+            {!hasAnyData ? (
+              <div className="p-4 text-sm text-black/60">
+                Aucune donnée pour {semestre}. Commence par créer un <Link to="/deals/new" className="underline">deal</Link> ou une <Link to="/visits/new" className="underline">visite</Link>.
+              </div>
+            ) : (
+              <DataTable columns={columns} rows={tableRows} />
+            )}
           </div>
         </div>
       )}
@@ -346,7 +370,11 @@ export default function Dashboard() {
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-black">Suivi par secteur</h3>
           <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            <DataTable columns={pivotCols} rows={bySecteur} empty="Aucune donnée" />
+            {bySecteur.length === 0 ? (
+              <div className="p-4 text-sm text-black/60">Aucune donnée</div>
+            ) : (
+              <DataTable columns={pivotCols} rows={bySecteur} empty="Aucune donnée" />
+            )}
           </div>
         </div>
       )}
@@ -355,7 +383,11 @@ export default function Dashboard() {
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-black">Suivi par commercial</h3>
           <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            <DataTable columns={pivotCols} rows={byCommercial} empty="Aucune donnée" />
+            {byCommercial.length === 0 ? (
+              <div className="p-4 text-sm text-black/60">Aucune donnée</div>
+            ) : (
+              <DataTable columns={pivotCols} rows={byCommercial} empty="Aucune donnée" />
+            )}
           </div>
         </div>
       )}
@@ -365,7 +397,9 @@ export default function Dashboard() {
           {/* Bar: CA/Marge vs Objectif */}
           <div className="xl:col-span-2 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
             <div className="text-sm font-semibold mb-2">CA & Marge — {semestre} (réalisé vs objectif)</div>
-            <Bar data={barData} options={barOptions} />
+            <div className="h-64">
+              <Bar data={barData} options={barOptions} />
+            </div>
             <div className="mt-2 text-xs text-black/60">
               CA : {fmtFCFA(sums.ca)} / {fmtFCFA(objectives.ca)} — {pct(sums.ca, objectives.ca)} &nbsp;|&nbsp; Marge : {fmtFCFA(sums.marge)} / {fmtFCFA(objectives.marge)} — {pct(sums.marge, objectives.marge)}
             </div>
@@ -374,13 +408,17 @@ export default function Dashboard() {
           {/* Donut: répartition des statuts */}
           <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
             <div className="text-sm font-semibold mb-2">Répartition des statuts — {semestre}</div>
-            <Doughnut data={donutData} options={donutOptions} />
+            <div className="h-64">
+              <Doughnut data={donutData} options={donutOptions} />
+            </div>
           </div>
 
           {/* Bar comparatif visites */}
           <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm xl:col-span-3">
             <div className="text-sm font-semibold mb-2">Activité de visites — {semestre} (réalisé vs objectif)</div>
-            <Bar data={visitsBarData} options={visitsBarOptions} />
+            <div className="h-64">
+              <Bar data={visitsBarData} options={visitsBarOptions} />
+            </div>
             <div className="mt-2 text-xs text-black/60">
               Visites : {sums.nVisite}/{objectives.visite || 0} &nbsp;|&nbsp; One-to-One : {sums.nOne}/{objectives.one2one || 0} &nbsp;|&nbsp; Workshops : {sums.nWorkshop}/{objectives.workshop || 0}
             </div>

@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx
+ // src/components/Sidebar.jsx
 import PropTypes from "prop-types";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
@@ -60,7 +60,7 @@ export default function Sidebar({ badges = {} }) {
           <Item to="/visits" end icon="calendar" label="Visites & Suivi" badge={badges.visits} />
 
           {/* Objectives -> page d'édition par défaut */}
-          <Item to="/objectives/edit" icon="target" label="Objectives" />
+          <Item to="/objectives" icon="target" label="Objectives" />
 
           {/* Pipe */}
           <Item to="/pipe" icon="dashboard" label="Pipe" />
