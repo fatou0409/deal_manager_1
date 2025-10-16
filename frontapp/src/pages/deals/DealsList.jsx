@@ -1,30 +1,44 @@
-// src/pages/deals/DealsList.jsx
-import { useEffect, useMemo } from "react";
+// src/pages/deals/DealsList.jsx - VERSION CORRIGÉE
+import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
 import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { fmtFCFA, uid } from "../../utils/format";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
 import { api } from "../../utils/api";
+import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 
 export default function DealsList() {
   const { state, dispatch } = useStore();
   const { can } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const CAN_UPDATE = can("deal:update");
   const CAN_DELETE = can("deal:delete");
 
-  // Chargement initial depuis l’API
+  const [editingDeal, setEditingDeal] = useState(null); // Pour le modal d'édition
+
+  // Helper pour convertir Date ISO -> yyyy-MM-dd pour input type="date"
+  const toDateInputValue = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return "";
+    }
+  };
+
+  // Chargement initial depuis l'API
   useEffect(() => {
     (async () => {
       try {
         const rows = await api.get(`/deals?semestre=${encodeURIComponent(state.selectedSemestre)}`);
         dispatch({ type: "SET_DEALS", payload: rows || [] });
       } catch (e) {
-        // on garde le store local si l’API ne répond pas
         console.warn("GET /deals failed:", e.message);
       }
     })();
@@ -35,13 +49,44 @@ export default function DealsList() {
     [state.deals, state.selectedSemestre]
   );
 
-  const onEdit = (row) => {
-    if (!CAN_UPDATE) return toast.show("Tu n’as pas le droit de modifier un deal.", "error");
-    // redirection si tu as une page d'édition
+  // OPTION 1 : Redirection vers page d'édition
+  const onEditRedirect = (row) => {
+    if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier un deal.", "error");
+    navigate(`/deals/${row.id}/edit`);
+  };
+
+  // OPTION 2 : Ouvrir un modal d'édition
+  const onEditModal = (row) => {
+    if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier un deal.", "error");
+    setEditingDeal({ ...row });
+  };
+
+  // Sauvegarde depuis le modal
+  const saveEditedDeal = async () => {
+    if (!editingDeal) return;
+    
+    try {
+      const payload = {
+        ...editingDeal,
+        ca: Number(editingDeal.ca || 0),
+        marge: Number(editingDeal.marge || 0),
+        // S'assurer que dateCreation est au format yyyy-MM-dd
+        dateCreation: toDateInputValue(editingDeal.dateCreation),
+        dateDerniereModif: new Date().toISOString().slice(0, 10),
+      };
+
+      const saved = await api.put(`/deals/${editingDeal.id}`, payload);
+      dispatch({ type: "UPDATE_DEAL", payload: saved || payload });
+      toast.show("Deal mis à jour avec succès.", "success");
+      setEditingDeal(null);
+    } catch (err) {
+      console.error("Erreur mise à jour deal:", err);
+      toast.show(`Échec mise à jour : ${err.message}`, "error");
+    }
   };
 
   const onDelete = async (id) => {
-    if (!CAN_DELETE) return toast.show("Tu n’as pas le droit de supprimer un deal.", "error");
+    if (!CAN_DELETE) return toast.show("Tu n'as pas le droit de supprimer un deal.", "error");
     if (!confirm("Supprimer ce deal ?")) return;
     try {
       await api.del(`/deals/${id}`);
@@ -75,12 +120,18 @@ export default function DealsList() {
         render: (r) => (
           <div className="flex items-center justify-center gap-2">
             {CAN_UPDATE && (
-              <button onClick={() => onEdit(r)} className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-medium text-orange-700">
+              <button 
+                onClick={() => onEditModal(r)} 
+                className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100"
+              >
                 Éditer
               </button>
             )}
             {CAN_DELETE && (
-              <button onClick={() => onDelete(r.id)} className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700">
+              <button 
+                onClick={() => onDelete(r.id)} 
+                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+              >
                 Supprimer
               </button>
             )}
@@ -110,7 +161,6 @@ export default function DealsList() {
     }));
 
     try {
-      // si tu n’as pas de /deals/bulk, on fait simple : POST 1 par 1
       for (const d of normalized) {
         const saved = await api.post("/deals", d);
         dispatch({ type: "ADD_DEAL", payload: saved || d });
@@ -154,6 +204,209 @@ export default function DealsList() {
       <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
         <DataTablePro columns={columns} rows={dealsOfSemestre} />
       </div>
+
+      {/* MODAL D'ÉDITION */}
+      {editingDeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-orange-500 text-white p-6 rounded-t-3xl">
+              <h3 className="text-xl font-bold">Modifier le deal</h3>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Section 1 : Informations client */}
+              <div>
+                <h4 className="text-sm font-semibold text-orange-600 mb-3">Informations client</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Projet <span className="text-orange-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editingDeal.projet || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, projet: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Client <span className="text-orange-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editingDeal.client || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, client: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Secteur <span className="text-orange-600">*</span>
+                    </label>
+                    <select
+                      value={editingDeal.secteur || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, secteur: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {SECTEURS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Date de création <span className="text-orange-600">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={toDateInputValue(editingDeal.dateCreation)}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, dateCreation: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2 : Détails commerciaux */}
+              <div>
+                <h4 className="text-sm font-semibold text-orange-600 mb-3">Détails commerciaux</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Type de deal <span className="text-orange-600">*</span>
+                    </label>
+                    <select
+                      value={editingDeal.typeDeal || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, typeDeal: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {TYPES_DEAL.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Commercial <span className="text-orange-600">*</span>
+                    </label>
+                    <select
+                      value={editingDeal.commercial || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, commercial: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {COMMERCIAUX.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Support AV
+                    </label>
+                    <select
+                      value={editingDeal.supportAV || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, supportAV: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {AV_SUPPORTS.map((av) => (
+                        <option key={av} value={av}>{av}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Semestre <span className="text-orange-600">*</span>
+                    </label>
+                    <select
+                      value={editingDeal.semestre || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, semestre: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {SEMESTRES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Statut <span className="text-orange-600">*</span>
+                    </label>
+                    <select
+                      value={editingDeal.statut || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, statut: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {STATUTS.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3 : Chiffres clés */}
+              <div>
+                <h4 className="text-sm font-semibold text-orange-600 mb-3">Chiffres clés</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      CA (CFA)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingDeal.ca || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, ca: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-black/70 uppercase mb-1.5">
+                      Marge (CFA)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingDeal.marge || ""}
+                      onChange={(e) => setEditingDeal({ ...editingDeal, marge: e.target.value })}
+                      className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Boutons d'action */}
+              <div className="flex justify-end gap-2 pt-4 border-t border-black/10">
+                <button
+                  onClick={() => setEditingDeal(null)}
+                  className="px-4 py-2 rounded-xl bg-white text-black border border-black/10 hover:bg-gray-50 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={saveEditedDeal}
+                  className="px-4 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 transition font-semibold"
+                >
+                  Sauvegarder
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes fade-in { 0% {opacity:0; transform: translateY(10px) scale(0.98);} 100% {opacity:1; transform: translateY(0) scale(1);} }

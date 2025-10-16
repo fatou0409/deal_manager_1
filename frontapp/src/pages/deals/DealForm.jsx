@@ -9,7 +9,7 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 import { uid } from "../../utils/format";
-import { api } from "../../utils/api"; // ⬅️ important: persistance API
+import { api } from "../../utils/api";
 
 const emptyDeal = {
   id: "",
@@ -27,11 +27,13 @@ const emptyDeal = {
   dateDerniereModif: "",
 };
 
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() { 
+  return new Date().toISOString().slice(0, 10); 
+}
 
 export default function DealForm() {
   const { state, dispatch } = useStore();
-  const { can, token } = useAuth(); // ⬅️ récup token si besoin d’Authorization
+  const { can, token } = useAuth();
   const toast = useToast();
 
   const CAN_CREATE = can("deal:create");
@@ -43,12 +45,10 @@ export default function DealForm() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!CAN_CREATE) return toast.show("Tu n’as pas le droit de créer un deal.", "error");
+    if (!CAN_CREATE) return toast.show("Tu n'as pas le droit de créer un deal.", "error");
 
-    // ⬇️ PLUS de remise à 0 selon le statut : on prend ce que l’utilisateur saisit
     const payload = {
       ...form,
-      // id côté front facultatif; le back génère un cuid s’il n’est pas envoyé
       id: form.id || uid(),
       ca: Number(form.ca || 0),
       marge: Number(form.marge || 0),
@@ -57,9 +57,7 @@ export default function DealForm() {
     };
 
     try {
-      // Persistance API (si ton API nécessite un Bearer token, api.post gère { token })
       const saved = await api.post("/deals", payload, { token });
-      // Mise à jour du store avec la réponse serveur (id, timestamps…)
       dispatch({ type: "ADD_DEAL", payload: saved || payload });
       toast.show("Deal créé avec succès.", "success");
       setForm({ ...emptyDeal, semestre: state.selectedSemestre });
@@ -84,19 +82,35 @@ export default function DealForm() {
             <h3 className="font-semibold text-orange-600 mb-3">Informations client</h3>
             <div className="space-y-3">
               <FormField label="Projet" required>
-                <TextInput value={form.projet} onChange={(e) => setForm({ ...form, projet: e.target.value })} placeholder="Ex: Mise en place supervision réseau" />
+                <TextInput 
+                  value={form.projet} 
+                  onChange={(e) => setForm({ ...form, projet: e.target.value })} 
+                  placeholder="Ex: Mise en place supervision réseau" 
+                />
               </FormField>
 
               <FormField label="Client" required>
-                <TextInput value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} placeholder="Ex: Banque de Dakar" />
+                <TextInput 
+                  value={form.client} 
+                  onChange={(e) => setForm({ ...form, client: e.target.value })} 
+                  placeholder="Ex: Banque de Dakar" 
+                />
               </FormField>
 
               <FormField label="Secteur" required>
-                <Select value={form.secteur} onChange={(v) => setForm({ ...form, secteur: v })} options={SECTEURS} />
+                <Select 
+                  value={form.secteur} 
+                  onChange={(v) => setForm({ ...form, secteur: v })} 
+                  options={SECTEURS} 
+                />
               </FormField>
 
               <FormField label="Date de création" required>
-                <TextInput type="date" value={form.dateCreation} onChange={(e) => setForm({ ...form, dateCreation: e.target.value })} />
+                <TextInput 
+                  type="date" 
+                  value={form.dateCreation} 
+                  onChange={(e) => setForm({ ...form, dateCreation: e.target.value })} 
+                />
               </FormField>
             </div>
           </section>
@@ -106,24 +120,44 @@ export default function DealForm() {
             <h3 className="font-semibold text-orange-600 mb-3">Détails commerciaux</h3>
             <div className="space-y-3">
               <FormField label="Type de deal" required>
-                <Select value={form.typeDeal} onChange={(v) => setForm({ ...form, typeDeal: v })} options={TYPES_DEAL} />
+                <Select 
+                  value={form.typeDeal} 
+                  onChange={(v) => setForm({ ...form, typeDeal: v })} 
+                  options={TYPES_DEAL} 
+                />
               </FormField>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField label="Commercial" required>
-                  <Select value={form.commercial} onChange={(v) => setForm({ ...form, commercial: v })} options={COMMERCIAUX} />
+                  <Select 
+                    value={form.commercial} 
+                    onChange={(v) => setForm({ ...form, commercial: v })} 
+                    options={COMMERCIAUX} 
+                  />
                 </FormField>
                 <FormField label="Support AV">
-                  <Select value={form.supportAV} onChange={(v) => setForm({ ...form, supportAV: v })} options={AV_SUPPORTS} />
+                  <Select 
+                    value={form.supportAV} 
+                    onChange={(v) => setForm({ ...form, supportAV: v })} 
+                    options={AV_SUPPORTS} 
+                  />
                 </FormField>
               </div>
 
               <FormField label="Semestre" required>
-                <Select value={form.semestre} onChange={(v) => setForm({ ...form, semestre: v })} options={SEMESTRES} />
+                <Select 
+                  value={form.semestre} 
+                  onChange={(v) => setForm({ ...form, semestre: v })} 
+                  options={SEMESTRES} 
+                />
               </FormField>
 
               <FormField label="Statut" required>
-                <Select value={form.statut} onChange={(v) => setForm({ ...form, statut: v })} options={STATUTS} />
+                <Select 
+                  value={form.statut} 
+                  onChange={(v) => setForm({ ...form, statut: v })} 
+                  options={STATUTS} 
+                />
               </FormField>
             </div>
           </section>
@@ -133,10 +167,16 @@ export default function DealForm() {
             <h3 className="font-semibold text-orange-600 mb-3">Chiffres clés</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Chiffre d'affaire (CFA)">
-                <NumberInput value={form.ca} onChange={(v) => setForm({ ...form, ca: v })} />
+                <NumberInput 
+                  value={form.ca} 
+                  onChange={(v) => setForm({ ...form, ca: v })} 
+                />
               </FormField>
               <FormField label="Marge (CFA)">
-                <NumberInput value={form.marge} onChange={(v) => setForm({ ...form, marge: v })} />
+                <NumberInput 
+                  value={form.marge} 
+                  onChange={(v) => setForm({ ...form, marge: v })} 
+                />
               </FormField>
             </div>
           </section>
@@ -146,7 +186,7 @@ export default function DealForm() {
         <div className="flex justify-end gap-2">
           <button
             disabled={!CAN_CREATE}
-            className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow"
+            className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Enregistrer
           </button>
