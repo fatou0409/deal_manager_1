@@ -44,7 +44,7 @@ model User {
   objectives         Objective[]
   objectiveHistories ObjectiveHistory[]
   histories          DealHistory[]      @relation("UserDealHistories")
-  pipes              Pipe[]             // ✅ Nouvelle relation avec Pipe
+  pipes              Pipe[]             // ✅ Relation avec Pipe
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,27 +115,25 @@ model Visit {
   updatedAt DateTime @updatedAt
 }
 
-// ---------- PIPE (Opportunités commerciales) ----------
+// ---------- PIPE (Table simplifiée avec 5 champs uniquement) ----------
 model Pipe {
   id String @id @default(cuid())
 
-  // Informations client
-  client     String
-  commercial String?  // IC
-  secteur    String
-  
-  // Détails du projet
-  projet   String    // Projets en vue
-  ca       Float     @default(0)  // Budget estimatif
-  statut   String    @default("Open")  // Open, Closed, Won, Lost
+  // ✅ Les 5 champs requis de la table Pipe
+  client  String   // 1. Client
+  ic      String   // 2. IC (Ingénieur Commercial)
+  secteur String   // 3. Secteur
+  projets String?  // 4. Projets en vue (optionnel)
+  budget  Float    @default(0)  // 5. Budget estimatif (CFA)
+
+  // Champ de filtrage
   semestre String
-  
-  // Métadonnées
-  dateCreation DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  // Relation optionnelle avec un utilisateur
+
+  // Métadonnées automatiques
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation optionnelle avec User
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
 }

@@ -1,3 +1,4 @@
+// backend/src/routes/objectives.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
 
@@ -66,6 +67,19 @@ router.post("/history", async (req, res, next) => {
 
     res.status(201).json(hist);
   } catch (e) { next(e); }
+});
+
+// DELETE /objectives/history/:id - NOUVELLE ROUTE
+router.delete("/history/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.objectiveHistory.delete({ 
+      where: { id } 
+    });
+    res.status(204).end();
+  } catch (e) { 
+    next(e); 
+  }
 });
 
 /**
