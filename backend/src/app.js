@@ -9,7 +9,7 @@ import objectivesRouter from "./routes/objectives.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import usersRouter from "./routes/users.routes.js";
 import statsRouter from "./routes/stats.routes.js";
-import pipesRouter from "./routes/pipes.routes.js"; // ✅ Import des routes Pipe
+import pipesRouter from "./routes/pipe.routes.js"; // ✅ Import des routes Pipe
 
 export const app = express();
 
@@ -27,7 +27,8 @@ app.use("/api/visits", visitsRouter);
 app.use("/api/objectives", objectivesRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/users", usersRouter);
-app.use("/api/pipes", pipesRouter); // ✅ Route Pipe avec /api
+app.use("/api/pipes", pipesRouter); // ✅ Route Pipe avec /api (pluriel)
+app.use("/api/pipe", pipesRouter); // ✅ Route Pipe avec /api (singulier) - compat
 
 // ---- Compat sans /api (puisque ton front appelle encore comme ça)
 app.use("/auth", authRouter);
@@ -36,7 +37,8 @@ app.use("/visits", visitsRouter);
 app.use("/objectives", objectivesRouter);
 app.use("/stats", statsRouter);
 app.use("/users", usersRouter);
-app.use("/pipes", pipesRouter); // ✅ Route Pipe sans /api
+app.use("/pipes", pipesRouter); // ✅ Route Pipe sans /api (pluriel)
+app.use("/pipe", pipesRouter); // ✅ Route Pipe sans /api (singulier) - compat
 
 app.use((req, res) => res.status(404).json({ message: "Not found", path: req.originalUrl }));
 app.use((err, _req, res, _next) => {
