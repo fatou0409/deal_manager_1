@@ -1,3 +1,4 @@
+// backend/src/routes/deals.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
 
@@ -25,8 +26,6 @@ router.get("/", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const b = req.body || {};
-    const s = (b.statut || "").toString().toLowerCase();
-    const isGagne = s.startsWith("gagn") || s === "won";
 
     const created = await prisma.deal.create({
       data: {
@@ -38,8 +37,8 @@ router.post("/", async (req, res, next) => {
         commercial:   b.commercial ?? null,
         supportAV:    b.supportAV ?? null,
         semestre:     b.semestre ?? "",
-        ca:           isGagne ? Number(b.ca ?? 0) : 0,
-        marge:        isGagne ? Number(b.marge ?? 0) : 0,
+        ca:           Number(b.ca ?? 0),    // ✅ TOUJOURS sauvegarder
+        marge:        Number(b.marge ?? 0), // ✅ TOUJOURS sauvegarder
         statut:       b.statut ?? "",
       },
     });
@@ -52,8 +51,6 @@ router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const b = req.body || {};
-    const s = (b.statut ?? "").toString().toLowerCase();
-    const isGagne = s.startsWith("gagn") || s === "won";
 
     const updated = await prisma.deal.update({
       where: { id },
@@ -66,8 +63,8 @@ router.put("/:id", async (req, res, next) => {
         commercial:   b.commercial,
         supportAV:    b.supportAV,
         semestre:     b.semestre,
-        ca:           isGagne ? Number(b.ca ?? 0) : 0,
-        marge:        isGagne ? Number(b.marge ?? 0) : 0,
+        ca:           Number(b.ca ?? 0),    // ✅ TOUJOURS sauvegarder
+        marge:        Number(b.marge ?? 0), // ✅ TOUJOURS sauvegarder
         statut:       b.statut,
       },
     });

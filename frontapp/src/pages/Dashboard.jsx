@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SEMESTRES } from "../utils/constants";
 import { fmtFCFA } from "../utils/format";
@@ -7,6 +7,7 @@ import Select from "../components/Select";
 import DataTable from "../components/DataTable";
 import { useAuth } from "../auth/AuthProvider";
 import { useStore } from "../store/useStore";
+import { api } from "../utils/api";
 
 // Chart.js
 import {
@@ -45,7 +46,7 @@ function normalizeObjective(obj = {}) {
   };
 }
 
-// ✅ format entier FR sans unité (pour les cartes du bandeau)
+// ✅ format entier FR sans unité
 function fmtInt(n) {
   const v = Number(n || 0);
   return new Intl.NumberFormat("fr-FR").format(Math.round(v));
@@ -57,15 +58,85 @@ const safeN = (n) => {
   return Number.isFinite(v) ? v : 0;
 };
 
+// ✅ CORRIGÉ : Vérifie si un deal est "Gagné" 
+// Supporte : "Deal gagné", "gagné", "Gagné", "Won", etc.
+function isWonDeal(statut) {
+  if (!statut) return false;
+  const s = String(statut).toLowerCase().trim();
+  // ✅ Détecte "deal gagné", "gagné", "gagne", "won"
+  return s.includes("gagn") || s === "won";
+}
+
 export default function Dashboard() {
   const { state, dispatch } = useStore();
   const { can } = useAuth();
 
   const [semestre, setSemestre] = useState(state.selectedSemestre);
-  const [tab, setTab] = useState("table"); // "table" | "secteur" | "commercial" | "charts"
+  const [tab, setTab] = useState("table"); // "table" | "charts"
+  const [loading, setLoading] = useState(true);
 
-  // utilise la normalisation
+  // ✅ CHARGEMENT DES DONNÉES AU MONTAGE
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        console.log("🔄 Chargement des données pour", semestre);
+
+        // Charger les deals
+        const deals = await api.get(`/deals?semestre=${encodeURIComponent(semestre)}`);
+        console.log("📦 Deals chargés:", deals?.length || 0);
+        console.table(deals?.map(d => ({ 
+          projet: d.projet, 
+          client: d.client,
+          statut: d.statut, 
+          ca: d.ca, 
+          marge: d.marge 
+        })));
+        dispatch({ type: "SET_DEALS", payload: deals || [] });
+
+        // Charger les visites
+        const visits = await api.get(`/visits?semestre=${encodeURIComponent(semestre)}`);
+        console.log("🚶 Visites chargées:", visits?.length || 0);
+        console.table(visits?.map(v => ({ 
+          date: v.date,
+          type: v.type, 
+          client: v.client,
+          secteur: v.secteur
+        })));
+        dispatch({ type: "SET_VISITS", payload: visits || [] });
+
+        // Charger les objectifs (tous, puis filtrer par semestre)
+        try {
+          const objectives = await api.get(`/objectives`);
+          console.log("🎯 Objectifs récupérés:", objectives);
+          
+          if (objectives && Array.isArray(objectives)) {
+            const objForSemester = objectives.find(o => o.period === semestre);
+            if (objForSemester) {
+              console.log("✅ Objectifs trouvés pour", semestre, ":", objForSemester);
+              dispatch({ 
+                type: "SET_OBJECTIVES", 
+                payload: { [semestre]: normalizeObjective(objForSemester) } 
+              });
+            } else {
+              console.warn("⚠️ Aucun objectif pour", semestre);
+            }
+          }
+        } catch (objError) {
+          console.warn("⚠️ Erreur chargement objectifs:", objError.message);
+        }
+
+      } catch (e) {
+        console.error("❌ Erreur chargement Dashboard:", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [semestre, dispatch]);
+
+  // Objectifs du semestre sélectionné
   const objectives = normalizeObjective(state.objectives[semestre] || {});
+  console.log("🎯 Objectifs actuels pour", semestre, ":", objectives);
 
   // Filtrage par semestre
   const dealsS = useMemo(
@@ -77,11 +148,26 @@ export default function Dashboard() {
     [state.visits, semestre]
   );
 
-  // Pour CA/Marge, on ne comptabilise que les deals "gagnés" (blind côté front)
-  const dealsWon = useMemo(
-    () => dealsS.filter((d) => (d.statut || "").toLowerCase().startsWith("gagn")),
-    [dealsS]
-  );
+  // ✅ Deals "gagnés" uniquement pour CA/Marge (avec détection améliorée)
+  const dealsWon = useMemo(() => {
+    const won = dealsS.filter((d) => isWonDeal(d.statut));
+    
+    console.log("💰 Analyse des deals:");
+    console.log("  - Total deals:", dealsS.length);
+    console.log("  - Deals avec statut:", dealsS.map(d => d.statut));
+    console.log("  - Deals GAGNÉS détectés:", won.length);
+    
+    if (won.length > 0) {
+      console.table(won.map(d => ({ 
+        projet: d.projet,
+        statut: d.statut,
+        ca: Number(d.ca),
+        marge: Number(d.marge)
+      })));
+    }
+    
+    return won;
+  }, [dealsS]);
 
   // Agrégats du semestre
   const sums = useMemo(() => {
@@ -91,6 +177,15 @@ export default function Dashboard() {
     const nOne = visitsS.filter((v) => v.type === "One-to-One").length;
     const nWorkshop = visitsS.filter((v) => v.type === "Workshop").length;
     const byStatus = groupByStatus(dealsS);
+
+    console.log("📈 AGRÉGATS CALCULÉS:");
+    console.log("  - CA total:", ca, "CFA");
+    console.log("  - Marge totale:", marge, "CFA");
+    console.log("  - Visites:", nVisite);
+    console.log("  - One-to-One:", nOne);
+    console.log("  - Workshops:", nWorkshop);
+    console.log("  - Répartition statuts:", byStatus);
+
     return { ca, marge, nVisite, nOne, nWorkshop, byStatus };
   }, [dealsWon, visitsS, dealsS]);
 
@@ -103,12 +198,12 @@ export default function Dashboard() {
     return `${Math.round((n / d) * 100)}%`;
   };
 
-  // ====== Tableau de suivi (avec colonne Semestre) ======
+  // ====== Tableau de suivi ======
   const tableRows = [
     { id: "visite",   semestre, type: "Visite",             nbre: sums.nVisite,   objectif: objectives.visite,   taux: pct(sums.nVisite, objectives.visite) },
     { id: "workshop", semestre, type: "Workshop",           nbre: sums.nWorkshop, objectif: objectives.workshop, taux: pct(sums.nWorkshop, objectives.workshop) },
     { id: "one",      semestre, type: "One-2-One",          nbre: sums.nOne,      objectif: objectives.one2one,  taux: pct(sums.nOne, objectives.one2one) },
-    { id: "ca",       semestre, type: "Chiffre d’affaires", nbre: sums.ca,        objectif: objectives.ca,       taux: pct(sums.ca, objectives.ca), isMoney: true },
+    { id: "ca",       semestre, type: "Chiffre d'affaires", nbre: sums.ca,        objectif: objectives.ca,       taux: pct(sums.ca, objectives.ca), isMoney: true },
     { id: "marge",    semestre, type: "Marge",              nbre: sums.marge,     objectif: objectives.marge,    taux: pct(sums.marge, objectives.marge), isMoney: true },
   ];
 
@@ -118,48 +213,6 @@ export default function Dashboard() {
     { key: "nbre", header: "Nbre", render: (r) => (r.isMoney ? fmtFCFA(r.nbre) : r.nbre) },
     { key: "objectif", header: "Objectif / Semestre", render: (r) => (r.isMoney ? fmtFCFA(r.objectif) : r.objectif) },
     { key: "taux", header: "Taux" },
-  ];
-
-  // ====== Pivots ======
-  const pivotBy = (key) => {
-    const group = {};
-    for (const d of dealsS) {
-      const k = d[key] || "—";
-      if (!group[k]) group[k] = { ca: 0, marge: 0, deals: 0 };
-      group[k].ca += safeN(d.ca);
-      group[k].marge += safeN(d.marge);
-      group[k].deals += 1;
-    }
-    for (const v of visitsS) {
-      const k = key === "secteur" ? (v.secteur || "—") : "—";
-      if (!group[k]) group[k] = { ca: 0, marge: 0, deals: 0 };
-      group[k].visite = (group[k].visite || 0) + (v.type === "Visite" ? 1 : 0);
-      group[k].one = (group[k].one || 0) + (v.type === "One-to-One" ? 1 : 0);
-      group[k].workshop = (group[k].workshop || 0) + (v.type === "Workshop" ? 1 : 0);
-    }
-    return Object.entries(group).map(([name, agg]) => ({
-      id: name,
-      name,
-      deals: agg.deals || 0,
-      ca: agg.ca || 0,
-      marge: agg.marge || 0,
-      visite: agg.visite || 0,
-      one: agg.one || 0,
-      workshop: agg.workshop || 0,
-    }));
-  };
-
-  const bySecteur = useMemo(() => pivotBy("secteur"), [dealsS, visitsS]);
-  const byCommercial = useMemo(() => pivotBy("commercial"), [dealsS, visitsS]);
-
-  const pivotCols = [
-    { key: "name", header: tab === "secteur" ? "Secteur" : "Commercial" },
-    { key: "deals", header: "Deals" },
-    { key: "ca", header: "CA", render: (r) => fmtFCFA(r.ca) },
-    { key: "marge", header: "Marge", render: (r) => fmtFCFA(r.marge) },
-    { key: "visite", header: "Visites" },
-    { key: "one", header: "One-2-One" },
-    { key: "workshop", header: "Workshops" },
   ];
 
   // ====== Données Chart.js ======
@@ -197,39 +250,7 @@ export default function Dashboard() {
     },
   };
 
-  // 2) Bar comparatif: Activité de visites (Réalisé vs Objectif) par type
-  const visitsBarLabels = ["Visites", "One-to-One", "Workshops"];
-  const visitsBarData = {
-    labels: visitsBarLabels,
-    datasets: [
-      {
-        label: "Réalisé",
-        data: [sums.nVisite, sums.nOne, sums.nWorkshop],
-        backgroundColor: "rgba(249,115,22,0.85)",
-      },
-      {
-        label: "Objectif",
-        data: [objectives.visite || 0, objectives.one2one || 0, objectives.workshop || 0],
-        backgroundColor: "rgba(203,213,225,0.85)",
-      },
-    ],
-  };
-  const visitsBarOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: { enabled: true },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { precision: 0 },
-      },
-    },
-  };
-
-  // 3) Donut: répartition des statuts de deals du semestre
+  // 2) Donut: répartition des statuts de deals du semestre
   const donutLabels = Object.keys(sums.byStatus);
   const donutData = {
     labels: donutLabels,
@@ -253,6 +274,17 @@ export default function Dashboard() {
     plugins: { legend: { position: "bottom" } },
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+          <p className="mt-4 text-gray-600">Chargement du dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* HERO / HEADER */}
@@ -261,7 +293,6 @@ export default function Dashboard() {
           className="absolute inset-0 opacity-15 pointer-events-none"
           style={{ backgroundImage: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "16px 16px" }}
         />
-        {/* voile léger sans flou */}
         <div className="absolute inset-0 bg-white/5" />
         <div className="relative p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -279,7 +310,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Bandeau objectifs (lecture) + CTA vers page d’édition */}
+          {/* Bandeau objectifs */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-3">
             {[
               { label: "CA (CFA)", value: fmtInt(objectives.ca) },
@@ -294,10 +325,7 @@ export default function Dashboard() {
                 style={{ animationDelay: `${i * 0.06 + 0.06}s` }}
               >
                 <div className="text-xs text-white/85">{x.label}</div>
-                <div
-                  className="text-xl font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
-                  title={String(x.value)}
-                >
+                <div className="text-xl font-semibold whitespace-nowrap overflow-hidden text-ellipsis" title={String(x.value)}>
                   {x.value}
                 </div>
               </div>
@@ -320,12 +348,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Onglets */}
+      {/* Onglets (seulement Tableau & Graphiques) */}
       <div className="flex flex-wrap gap-2 mt-2">
         {[
           { id: "table", label: "Tableau" },
-          { id: "secteur", label: "Par secteur" },
-          { id: "commercial", label: "Par commercial" },
           { id: "charts", label: "Graphiques" },
         ].map((t) => (
           <button
@@ -357,36 +383,12 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
             {!hasAnyData ? (
               <div className="p-4 text-sm text-black/60">
-                Aucune donnée pour {semestre}. Commence par créer un <Link to="/deals/new" className="underline">deal</Link> ou une <Link to="/visits/new" className="underline">visite</Link>.
+                Aucune donnée pour {semestre}. Commence par créer un{" "}
+                <Link to="/deals/new" className="underline">deal</Link> ou une{" "}
+                <Link to="/visits/new" className="underline">visite</Link>.
               </div>
             ) : (
               <DataTable columns={columns} rows={tableRows} />
-            )}
-          </div>
-        </div>
-      )}
-
-      {tab === "secteur" && (
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-black">Suivi par secteur</h3>
-          <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            {bySecteur.length === 0 ? (
-              <div className="p-4 text-sm text-black/60">Aucune donnée</div>
-            ) : (
-              <DataTable columns={pivotCols} rows={bySecteur} empty="Aucune donnée" />
-            )}
-          </div>
-        </div>
-      )}
-
-      {tab === "commercial" && (
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-black">Suivi par commercial</h3>
-          <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            {byCommercial.length === 0 ? (
-              <div className="p-4 text-sm text-black/60">Aucune donnée</div>
-            ) : (
-              <DataTable columns={pivotCols} rows={byCommercial} empty="Aucune donnée" />
             )}
           </div>
         </div>
@@ -417,7 +419,7 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm xl:col-span-3">
             <div className="text-sm font-semibold mb-2">Activité de visites — {semestre} (réalisé vs objectif)</div>
             <div className="h-64">
-              <Bar data={visitsBarData} options={visitsBarOptions} />
+              <Bar data={visitsBarData(objectives, sums)} options={visitsBarOptions} />
             </div>
             <div className="mt-2 text-xs text-black/60">
               Visites : {sums.nVisite}/{objectives.visite || 0} &nbsp;|&nbsp; One-to-One : {sums.nOne}/{objectives.one2one || 0} &nbsp;|&nbsp; Workshops : {sums.nWorkshop}/{objectives.workshop || 0}
@@ -429,7 +431,7 @@ export default function Dashboard() {
   );
 }
 
-/* Helpers */
+// Helpers
 function groupByStatus(deals = []) {
   const acc = {};
   for (const d of deals) {
@@ -438,3 +440,30 @@ function groupByStatus(deals = []) {
   }
   return acc;
 }
+
+// Options/jeu de données pour la barre "visites"
+function visitsBarData(objectives, sums) {
+  const labels = ["Visites", "One-to-One", "Workshops"];
+  return {
+    labels,
+    datasets: [
+      {
+        label: "Réalisé",
+        data: [sums.nVisite, sums.nOne, sums.nWorkshop],
+        backgroundColor: "rgba(249,115,22,0.85)",
+      },
+      {
+        label: "Objectif",
+        data: [objectives.visite || 0, objectives.one2one || 0, objectives.workshop || 0],
+        backgroundColor: "rgba(203,213,225,0.85)",
+      },
+    ],
+  };
+}
+
+const visitsBarOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { position: "top" }, tooltip: { enabled: true } },
+  scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+};

@@ -1,4 +1,4 @@
-// src/pages/deals/DealsList.jsx - VERSION CORRIGÉE
+// src/pages/deals/DealsList.jsx - VERSION FINALE
 import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
@@ -19,9 +19,8 @@ export default function DealsList() {
   const CAN_UPDATE = can("deal:update");
   const CAN_DELETE = can("deal:delete");
 
-  const [editingDeal, setEditingDeal] = useState(null); // Pour le modal d'édition
+  const [editingDeal, setEditingDeal] = useState(null);
 
-  // Helper pour convertir Date ISO -> yyyy-MM-dd pour input type="date"
   const toDateInputValue = (dateString) => {
     if (!dateString) return "";
     try {
@@ -32,7 +31,6 @@ export default function DealsList() {
     }
   };
 
-  // Chargement initial depuis l'API
   useEffect(() => {
     (async () => {
       try {
@@ -49,19 +47,11 @@ export default function DealsList() {
     [state.deals, state.selectedSemestre]
   );
 
-  // OPTION 1 : Redirection vers page d'édition
-  const onEditRedirect = (row) => {
-    if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier un deal.", "error");
-    navigate(`/deals/${row.id}/edit`);
-  };
-
-  // OPTION 2 : Ouvrir un modal d'édition
   const onEditModal = (row) => {
     if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier un deal.", "error");
     setEditingDeal({ ...row });
   };
 
-  // Sauvegarde depuis le modal
   const saveEditedDeal = async () => {
     if (!editingDeal) return;
     
@@ -70,7 +60,6 @@ export default function DealsList() {
         ...editingDeal,
         ca: Number(editingDeal.ca || 0),
         marge: Number(editingDeal.marge || 0),
-        // S'assurer que dateCreation est au format yyyy-MM-dd
         dateCreation: toDateInputValue(editingDeal.dateCreation),
         dateDerniereModif: new Date().toISOString().slice(0, 10),
       };
@@ -106,12 +95,14 @@ export default function DealsList() {
       {
         key: "ca",
         header: "CA",
-        render: (r) => (/gagn[ée]?/i.test(r.statut || "") ? fmtFCFA(r.ca) : fmtFCFA(0)),
+        // ✅ TOUJOURS afficher le CA réel
+        render: (r) => fmtFCFA(r.ca || 0),
       },
       {
         key: "marge",
         header: "Marge",
-        render: (r) => (/gagn[ée]?/i.test(r.statut || "") ? fmtFCFA(r.marge) : fmtFCFA(0)),
+        // ✅ TOUJOURS afficher la marge réelle
+        render: (r) => fmtFCFA(r.marge || 0),
       },
       { key: "statut", header: "Statut" },
       {
@@ -142,7 +133,6 @@ export default function DealsList() {
     [CAN_UPDATE, CAN_DELETE]
   );
 
-  // Import CSV/XLSX → POST API
   const handleImportDeals = async (rowsLower) => {
     const normalized = rowsLower.map((r) => ({
       id: uid(),
