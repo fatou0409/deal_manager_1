@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { SEMESTRES } from "../../utils/constants";
 import Select from "../../components/Select";
 import { useToast } from "../../components/ToastProvider";
+import { fmtFCFA } from "../../utils/format";
 
 async function fetchHistory(userId, period, token) {
   const res = await fetch(`/api/objectives/history/${userId}/${period}`, {
@@ -25,9 +26,9 @@ async function deleteSnapshot(id, token) {
 async function updateObjective({ userId, period, values, token }) {
   const res = await fetch(`/api/objectives`, {
     method: "PUT",
-    headers: { 
-      "Content-Type": "application/json", 
-      Authorization: `Bearer ${token}` 
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({ userId, period, ...values }),
   });
@@ -38,9 +39,9 @@ async function updateObjective({ userId, period, values, token }) {
 async function saveSnapshot({ userId, period, values, token, by }) {
   const res = await fetch(`/api/objectives/history`, {
     method: "POST",
-    headers: { 
-      "Content-Type": "application/json", 
-      Authorization: `Bearer ${token}` 
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({ userId, period, by, ...values }),
   });
@@ -73,10 +74,9 @@ export default function ObjectivesList() {
     [history]
   );
 
-  // Ouvrir le modal d'édition
   const onEdit = (snap) => {
     if (!canEdit) return toast.show("Tu n'as pas les droits pour modifier les objectifs.", "error");
-    
+
     setEditingObjective({
       id: snap.id,
       userId: user.id,
@@ -89,10 +89,9 @@ export default function ObjectivesList() {
     });
   };
 
-  // Sauvegarder depuis le modal
   const saveEditedObjective = async () => {
     if (!editingObjective) return;
-    
+
     try {
       const values = {
         ca: Number(editingObjective.ca || 0),
@@ -102,7 +101,6 @@ export default function ObjectivesList() {
         workshops: Number(editingObjective.workshops || 0),
       };
 
-      // Mettre à jour les objectifs principaux
       await updateObjective({
         userId: user.id,
         period: semestre,
@@ -110,7 +108,6 @@ export default function ObjectivesList() {
         token,
       });
 
-      // Créer un nouveau snapshot dans l'historique
       await saveSnapshot({
         userId: user.id,
         period: semestre,
@@ -119,13 +116,11 @@ export default function ObjectivesList() {
         by: user.email || user.id,
       });
 
-      // Mettre à jour le store local
       dispatch({
         type: "SET_OBJECTIVES",
         payload: { semestre, values },
       });
 
-      // Rafraîchir l'historique
       const newHistory = await fetchHistory(user.id, semestre, token);
       setHistory(newHistory);
 
@@ -208,10 +203,10 @@ export default function ObjectivesList() {
                   </td>
                   <td className="py-2 pr-4">{snap.by}</td>
                   <td className="py-2 pr-4">
-                    {Number(snap.ca ?? snap.values?.ca ?? 0).toLocaleString()}
+                    {fmtFCFA(Number(snap.ca ?? snap.values?.ca ?? 0))}
                   </td>
                   <td className="py-2 pr-4">
-                    {Number(snap.marge ?? snap.values?.marge ?? 0).toLocaleString()}
+                    {fmtFCFA(Number(snap.marge ?? snap.values?.marge ?? 0))}
                   </td>
                   <td className="py-2 pr-4">{snap.visites ?? snap.values?.visites ?? 0}</td>
                   <td className="py-2 pr-4">{snap.one2one ?? snap.values?.one2one ?? 0}</td>

@@ -43,7 +43,6 @@ model User {
   visits             Visit[]
   objectives         Objective[]
   objectiveHistories ObjectiveHistory[]
-  histories          DealHistory[]      @relation("UserDealHistories")
   pipes              Pipe[]             // ✅ Relation avec Pipe
 
   createdAt DateTime @default(now())
@@ -73,20 +72,7 @@ model Deal {
   ownerId String?
   owner   User?   @relation("UserDeals", fields: [ownerId], references: [id])
 
-  histories DealHistory[]
   visits    Visit[]
-}
-
-model DealHistory {
-  id     String @id @default(cuid())
-  dealId String
-  deal   Deal   @relation(fields: [dealId], references: [id])
-
-  changedById String?
-  changedBy   User?   @relation("UserDealHistories", fields: [changedById], references: [id])
-
-  changedAt DateTime @default(now())
-  diff      Json
 }
 
 model Visit {
@@ -120,11 +106,11 @@ model Pipe {
   id String @id @default(cuid())
 
   // ✅ Les 5 champs requis de la table Pipe
-  client  String   // 1. Client
-  ic      String   // 2. IC (Ingénieur Commercial)
-  secteur String   // 3. Secteur
-  projets String?  // 4. Projets en vue (optionnel)
-  budget  Float    @default(0)  // 5. Budget estimatif (CFA)
+  client  String        // 1. Client
+  ic      String        // 2. IC (Ingénieur Commercial)
+  secteur String        // 3. Secteur
+  projets String?       // 4. Projets en vue (optionnel)
+  budget  Float @default(0) // 5. Budget estimatif (CFA)
 
   // Champ de filtrage
   semestre String

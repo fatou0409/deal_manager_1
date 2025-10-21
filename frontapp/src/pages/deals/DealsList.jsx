@@ -95,13 +95,11 @@ export default function DealsList() {
       {
         key: "ca",
         header: "CA",
-        // ✅ TOUJOURS afficher le CA réel
         render: (r) => fmtFCFA(r.ca || 0),
       },
       {
         key: "marge",
         header: "Marge",
-        // ✅ TOUJOURS afficher la marge réelle
         render: (r) => fmtFCFA(r.marge || 0),
       },
       { key: "statut", header: "Statut" },
@@ -190,8 +188,8 @@ export default function DealsList() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+      {/* TABLE - AJOUT DE overflow-x-auto ICI */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm overflow-x-auto">
         <DataTablePro columns={columns} rows={dealsOfSemestre} />
       </div>
 
