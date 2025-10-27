@@ -58,7 +58,7 @@ const safeN = (n) => {
   return Number.isFinite(v) ? v : 0;
 };
 
-// ✅ CORRIGÉ : Vérifie si un deal est "Gagné" 
+// ✅ CORRIGÉ : Vérifie si un deal est "Gagné"
 // Supporte : "Deal gagné", "gagné", "Gagné", "Won", etc.
 function isWonDeal(statut) {
   if (!statut) return false;
@@ -69,7 +69,7 @@ function isWonDeal(statut) {
 
 export default function Dashboard() {
   const { state, dispatch } = useStore();
-  const { can } = useAuth();
+  const { user, can } = useAuth();
 
   const [semestre, setSemestre] = useState(state.selectedSemestre);
   const [tab, setTab] = useState("table"); // "table" | "charts"
@@ -82,30 +82,17 @@ export default function Dashboard() {
       try {
         console.log("🔄 Chargement des données pour", semestre);
 
-        // Charger les deals
+        // Charger les deals (filtrés automatiquement par le backend selon le rôle)
         const deals = await api.get(`/deals?semestre=${encodeURIComponent(semestre)}`);
         console.log("📦 Deals chargés:", deals?.length || 0);
-        console.table(deals?.map(d => ({ 
-          projet: d.projet, 
-          client: d.client,
-          statut: d.statut, 
-          ca: d.ca, 
-          marge: d.marge 
-        })));
         dispatch({ type: "SET_DEALS", payload: deals || [] });
 
-        // Charger les visites
+        // Charger les visites (filtrées automatiquement par le backend selon le rôle)
         const visits = await api.get(`/visits?semestre=${encodeURIComponent(semestre)}`);
         console.log("🚶 Visites chargées:", visits?.length || 0);
-        console.table(visits?.map(v => ({ 
-          date: v.date,
-          type: v.type, 
-          client: v.client,
-          secteur: v.secteur
-        })));
         dispatch({ type: "SET_VISITS", payload: visits || [] });
 
-        // Charger les objectifs (tous, puis filtrer par semestre)
+        // Charger les objectifs (filtrés automatiquement par le backend selon le rôle)
         try {
           const objectives = await api.get(`/objectives`);
           console.log("🎯 Objectifs récupérés:", objectives);
@@ -136,7 +123,6 @@ export default function Dashboard() {
 
   // Objectifs du semestre sélectionné
   const objectives = normalizeObjective(state.objectives[semestre] || {});
-  console.log("🎯 Objectifs actuels pour", semestre, ":", objectives);
 
   // Filtrage par semestre
   const dealsS = useMemo(
@@ -148,25 +134,9 @@ export default function Dashboard() {
     [state.visits, semestre]
   );
 
-  // ✅ Deals "gagnés" uniquement pour CA/Marge (avec détection améliorée)
+  // ✅ Deals "gagnés" uniquement pour CA/Marge
   const dealsWon = useMemo(() => {
-    const won = dealsS.filter((d) => isWonDeal(d.statut));
-    
-    console.log("💰 Analyse des deals:");
-    console.log("  - Total deals:", dealsS.length);
-    console.log("  - Deals avec statut:", dealsS.map(d => d.statut));
-    console.log("  - Deals GAGNÉS détectés:", won.length);
-    
-    if (won.length > 0) {
-      console.table(won.map(d => ({ 
-        projet: d.projet,
-        statut: d.statut,
-        ca: Number(d.ca),
-        marge: Number(d.marge)
-      })));
-    }
-    
-    return won;
+    return dealsS.filter((d) => isWonDeal(d.statut));
   }, [dealsS]);
 
   // Agrégats du semestre
@@ -177,14 +147,6 @@ export default function Dashboard() {
     const nOne = visitsS.filter((v) => v.type === "One-to-One").length;
     const nWorkshop = visitsS.filter((v) => v.type === "Workshop").length;
     const byStatus = groupByStatus(dealsS);
-
-    console.log("📈 AGRÉGATS CALCULÉS:");
-    console.log("  - CA total:", ca, "CFA");
-    console.log("  - Marge totale:", marge, "CFA");
-    console.log("  - Visites:", nVisite);
-    console.log("  - One-to-One:", nOne);
-    console.log("  - Workshops:", nWorkshop);
-    console.log("  - Répartition statuts:", byStatus);
 
     return { ca, marge, nVisite, nOne, nWorkshop, byStatus };
   }, [dealsWon, visitsS, dealsS]);
@@ -279,7 +241,7 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-          <p className="mt-4 text-gray-600">Chargement du dashboard...</p>
+          <p className="mt-4 text-gray-600">Chargement du tableau de bord...</p>
         </div>
       </div>
     );
@@ -297,8 +259,12 @@ export default function Dashboard() {
         <div className="relative p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h2>
-              <p className="mt-1 text-white/80 text-sm">Suivi des objectifs semestriels</p>
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Tableau de bord</h2>
+              <p className="mt-1 text-white/80 text-sm">
+                {user?.role === 'BUSINESS_DEVELOPER' 
+                  ? '📊 Vos statistiques personnelles' 
+                  : 'Suivi des objectifs semestriels'}
+              </p>
             </div>
             <div className="w-full md:w-64">
               <Select
@@ -332,10 +298,11 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {can("objectives:update") && (
+          {/* 🔴 Bouton gérer objectifs - Masqué pour Business Developer */}
+          {can("objectives:update") && user?.role !== 'BUSINESS_DEVELOPER' && (
             <div className="mt-3">
               <Link
-                to="/objectives/edit"
+                to="/objectives/new"
                 className="inline-flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 border border-white/20 hover:bg-orange-50 transition text-sm"
               >
                 Gérer les objectifs
@@ -343,6 +310,13 @@ export default function Dashboard() {
                   <path d="M9 18l6-6-6-6" strokeWidth="2" />
                 </svg>
               </Link>
+            </div>
+          )}
+          
+          {/* 🔴 Message pour Business Developer */}
+          {user?.role === 'BUSINESS_DEVELOPER' && (
+            <div className="mt-3 text-white/70 text-sm">
+              💡 Vos objectifs sont définis par votre manager
             </div>
           )}
         </div>

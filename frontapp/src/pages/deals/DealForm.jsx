@@ -39,13 +39,35 @@ export default function DealForm() {
   const CAN_CREATE = can("deal:create");
   const [form, setForm] = useState({ ...emptyDeal, semestre: state.selectedSemestre });
 
+  // Debug : afficher la valeur de CAN_CREATE
+  useEffect(() => {
+    console.log("DealForm - CAN_CREATE:", CAN_CREATE);
+    console.log("DealForm - Token présent:", !!token);
+  }, [CAN_CREATE, token]);
+
   useEffect(() => {
     setForm((f) => ({ ...f, semestre: state.selectedSemestre }));
   }, [state.selectedSemestre]);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!CAN_CREATE) return toast.show("Tu n'as pas le droit de créer un deal.", "error");
+    
+    console.log("DealForm - Submit - CAN_CREATE:", CAN_CREATE);
+    
+    if (!CAN_CREATE) {
+      return toast.show("Tu n'as pas le droit de créer un deal.", "error");
+    }
+
+    // Validation des champs requis
+    if (!form.projet?.trim()) {
+      return toast.show("Le projet est requis.", "error");
+    }
+    if (!form.client?.trim()) {
+      return toast.show("Le client est requis.", "error");
+    }
+    if (!form.secteur) {
+      return toast.show("Le secteur est requis.", "error");
+    }
 
     const payload = {
       ...form,
@@ -57,11 +79,19 @@ export default function DealForm() {
     };
 
     try {
+      console.log("DealForm - Envoi à /deals:", payload);
+      console.log("DealForm - Token:", token ? "présent" : "absent");
+      
       const saved = await api.post("/deals", payload, { token });
+      
+      console.log("DealForm - Réponse:", saved);
       dispatch({ type: "ADD_DEAL", payload: saved || payload });
       toast.show("Deal créé avec succès.", "success");
       setForm({ ...emptyDeal, semestre: state.selectedSemestre });
     } catch (err) {
+      console.error("DealForm - Erreur complète:", err);
+      console.error("DealForm - Status:", err.status);
+      console.error("DealForm - Message:", err.message);
       toast.show(`Échec création deal : ${err.message}`, "error");
     }
   };
@@ -73,6 +103,8 @@ export default function DealForm() {
         <h2 className="text-2xl font-bold">Créer un nouveau deal</h2>
         <p className="text-sm opacity-80 mt-1">Renseigne les informations du projet client et les indicateurs clés.</p>
       </div>
+
+      
 
       <form onSubmit={submit} className="space-y-6">
         {/* Grid 2 colonnes */}
@@ -185,6 +217,7 @@ export default function DealForm() {
         {/* Actions */}
         <div className="flex justify-end gap-2">
           <button
+            type="submit"
             disabled={!CAN_CREATE}
             className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed"
           >

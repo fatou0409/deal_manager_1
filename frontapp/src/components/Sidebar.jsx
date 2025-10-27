@@ -1,4 +1,4 @@
- // src/components/Sidebar.jsx
+// src/components/Sidebar.jsx
 import PropTypes from "prop-types";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
@@ -51,7 +51,7 @@ export default function Sidebar({ badges = {} }) {
         <nav className="flex flex-col gap-1">
           {/* Pages principales */}
           <Item to="/" end icon="home" label="Accueil" />
-          <Item to="/dashboard" icon="dashboard" label="Dashboard" />
+          <Item to="/dashboard" icon="dashboard" label="Tableau de bord" />
 
           {/* Deal = liste par défaut */}
           <Item to="/deals" end icon="briefcase" label="Deal" badge={badges.deals} />
@@ -59,8 +59,8 @@ export default function Sidebar({ badges = {} }) {
           {/* Visites & Suivi = historique par défaut */}
           <Item to="/visits" end icon="calendar" label="Visites & Suivi" badge={badges.visits} />
 
-          {/* Objectives -> page d'édition par défaut */}
-          <Item to="/objectives" icon="target" label="Objectives" />
+          {/* Objectifs -> page d'édition par défaut */}
+          <Item to="/objectives" icon="target" label="Objectifs" />
 
           {/* Pipe */}
           <Item to="/pipe" icon="dashboard" label="Pipe" />

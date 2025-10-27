@@ -1,4 +1,3 @@
-// src/components/ImportExportBar.jsx
 import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useAuth } from "../auth/AuthProvider";
@@ -9,7 +8,7 @@ import { useToast } from "./ToastProvider"; // Assurez-vous que le chemin est co
 
 /**
  * Props:
- * - resource: "deal" | "visit" (pour permissions: "<resource>:import/export")
+ * - resource: "deal" | "visit" | "pipe"  (permissions: "<resource>:import/export")
  * - title: string (titre du PDF)
  * - filename: string (base du nom de fichier sans extension)
  * - columns: Array<{ key: string, header: string }>

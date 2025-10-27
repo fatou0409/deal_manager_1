@@ -1,5 +1,26 @@
 // src/utils/api.js
-const BASE = import.meta.env.VITE_API_URL || "/api"
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:4001/api"
+
+// 🔑 Fonction pour récupérer le token
+function getToken() {
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+}
+
+// 🔑 Fonction pour créer les headers avec le token
+function getHeaders(includeToken = true) {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  
+  if (includeToken) {
+    const token = getToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  
+  return headers;
+}
 
 async function handle(res) {
   if (!res.ok) {
@@ -15,12 +36,15 @@ async function handle(res) {
 
 export const api = {
   get: (path) =>
-    fetch(`${BASE}${path}`, { credentials: "include" }).then(handle),
+    fetch(`${BASE}${path}`, { 
+      credentials: "include",
+      headers: getHeaders() // 🔑 Ajouter le token
+    }).then(handle),
 
   post: (path, body) =>
     fetch(`${BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders(), // 🔑 Ajouter le token
       credentials: "include",
       body: JSON.stringify(body ?? {}),
     }).then(handle),
@@ -28,7 +52,7 @@ export const api = {
   put: (path, body) =>
     fetch(`${BASE}${path}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders(), // 🔑 Ajouter le token
       credentials: "include",
       body: JSON.stringify(body ?? {}),
     }).then(handle),
@@ -37,5 +61,6 @@ export const api = {
     fetch(`${BASE}${path}`, {
       method: "DELETE",
       credentials: "include",
+      headers: getHeaders(), // 🔑 Ajouter le token
     }).then(handle),
 }

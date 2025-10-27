@@ -1,4 +1,3 @@
-// frontapp/src/pages/pipe/PipeList.jsx
 import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
@@ -11,7 +10,7 @@ import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES } from "../../utils/constants";
 
 export default function PipeList() {
-  const { state, dispatch } = useStore();
+  const { state } = useStore();
   const { can, token } = useAuth();
   const toast = useToast();
 

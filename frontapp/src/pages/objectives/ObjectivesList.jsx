@@ -1,3 +1,4 @@
+// src/pages/objectives/ObjectivesList.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../../store/useStore";
@@ -151,7 +152,7 @@ export default function ObjectivesList() {
         <div className="absolute inset-0 bg-white/5" />
         <div className="relative p-6 md:p-8 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Objectives — {semestre}</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Objectifs — {semestre}</h2>
           </div>
 
           <div className="flex items-center gap-3">
@@ -171,7 +172,7 @@ export default function ObjectivesList() {
               to="/objectives/new"
               className="inline-flex items-center gap-2 rounded-xl bg-white/10 text-white px-3 py-1.5 border border-white/20 hover:bg-white/20 transition text-sm"
             >
-              + Nouvelle objective
+              + Nouvel objectif
             </Link>
           </div>
         </div>

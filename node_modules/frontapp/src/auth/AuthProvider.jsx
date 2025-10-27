@@ -1,58 +1,104 @@
 // src/auth/AuthProvider.jsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { canRole } from "./permissions";
+import PropTypes from "prop-types";
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
-// ...existing code...
-
-import PropTypes from "prop-types";
-
 export function AuthProvider({ children }) {
-AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-  const [user, setUser] = useState(null);   // { email, role, firstName?, lastName?, mustChangePassword? }
+  const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // hydrate: plus de localStorage, tout vient du backend (token en mémoire)
+  // 🔑 NOUVEAU : Hydrater depuis localStorage au démarrage
   useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Erreur hydratation:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    
     setLoading(false);
   }, []);
 
   const login = async ({ email, password }) => {
-    // Appel réel au backend
-    const res = await fetch("/api/auth/login", {
+    // 🔑 IMPORTANT : Utiliser l'URL complète du backend
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+    
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     });
+    
     let data = null;
-    try { data = await res.json(); } catch {}
-    if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+    try { 
+      data = await res.json(); 
+    } catch (e) {
+      console.error('Erreur parsing JSON:', e);
+    }
+    
+    if (!res.ok) {
+      throw new Error(data?.message || `HTTP ${res.status}`);
+    }
+    
     const safeUser = {
+      id: data.user.id,
       email: data.user.email,
       role: data.user.role,
+      name: data.user.name || "",
       firstName: data.user.firstName || "",
       lastName: data.user.lastName || "",
       mustChangePassword: !!data.user.mustChangePassword,
-      id: data.user.id,
     };
+    
+    // 🔑 CRITIQUE : Stocker dans localStorage ET dans le state
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(safeUser));
+    
     setUser(safeUser);
     setToken(data.token);
-
   };
 
   const logout = () => {
+    // 🔑 CRITIQUE : Supprimer de localStorage ET du state
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
     setUser(null);
     setToken(null);
   };
 
-  // changer le MDP de l'utilisateur courant
+  // Changer le mot de passe
   const changePassword = async ({ currentPassword, newPassword }) => {
-    throw new Error("Non supporté en mode connecté au backend");
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+    
+    const res = await fetch(`${API_URL}/auth/change-password`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // 🔑 Utiliser le token
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    
+    let data = null;
+    try { data = await res.json(); } catch {}
+    
+    if (!res.ok) {
+      throw new Error(data?.message || `Erreur changement mot de passe`);
+    }
+    
+    return data;
   };
 
   // Helper permission: can("deal:create")
@@ -62,5 +108,10 @@ AuthProvider.propTypes = {
     () => ({ user, token, loading, login, logout, can, changePassword }),
     [user, token, loading]
   );
+  
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};

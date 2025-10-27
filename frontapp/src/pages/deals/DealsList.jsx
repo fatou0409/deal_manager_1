@@ -1,4 +1,4 @@
-// src/pages/deals/DealsList.jsx - VERSION FINALE
+// src/pages/deals/DealsList.jsx - VERSION FINALE AVEC TRAÇABILITÉ
 import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
@@ -18,6 +18,7 @@ export default function DealsList() {
 
   const CAN_UPDATE = can("deal:update");
   const CAN_DELETE = can("deal:delete");
+  const CAN_VIEW_ALL = can("deal:view_all"); // ✅ Pour afficher la colonne "Créé par"
 
   const [editingDeal, setEditingDeal] = useState(null);
 
@@ -103,6 +104,23 @@ export default function DealsList() {
         render: (r) => fmtFCFA(r.marge || 0),
       },
       { key: "statut", header: "Statut" },
+      // ✅ NOUVELLE COLONNE : Créé par (visible uniquement pour ADMIN/MANAGER)
+      ...(CAN_VIEW_ALL ? [{
+        key: "owner",
+        header: "Créé par",
+        render: (r) => (
+          <div className="text-xs">
+            <div className="font-medium text-gray-900">
+              {r.owner?.name || "N/A"}
+            </div>
+            {r.owner?.email && (
+              <div className="text-gray-500 text-[10px]">
+                {r.owner.email}
+              </div>
+            )}
+          </div>
+        ),
+      }] : []),
       {
         key: "_actions",
         header: <div className="w-full text-center">Actions</div>,
@@ -128,7 +146,7 @@ export default function DealsList() {
         ),
       },
     ],
-    [CAN_UPDATE, CAN_DELETE]
+    [CAN_UPDATE, CAN_DELETE, CAN_VIEW_ALL]
   );
 
   const handleImportDeals = async (rowsLower) => {
@@ -188,7 +206,7 @@ export default function DealsList() {
         </div>
       </div>
 
-      {/* TABLE - AJOUT DE overflow-x-auto ICI */}
+      {/* TABLE */}
       <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm overflow-x-auto">
         <DataTablePro columns={columns} rows={dealsOfSemestre} />
       </div>
@@ -202,6 +220,21 @@ export default function DealsList() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* ✅ AFFICHAGE DU CRÉATEUR DANS LE MODAL (si visible) */}
+              {CAN_VIEW_ALL && editingDeal.owner && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <div>
+                      <p className="text-xs font-semibold text-orange-900">Créé par</p>
+                      <p className="text-sm text-orange-700">{editingDeal.owner.name || editingDeal.owner.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Section 1 : Informations client */}
               <div>
                 <h4 className="text-sm font-semibold text-orange-600 mb-3">Informations client</h4>

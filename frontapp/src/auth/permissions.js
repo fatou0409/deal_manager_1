@@ -1,10 +1,8 @@
-// src/auth/permissions.js
-
 // Libellés FR (utilisables dans l'UI)
 export const ROLES = {
-  ADMIN: "ADMIN",
+  ADMIN: "ADMIN", // Garde les clés canoniques
   MANAGER: "MANAGER",
-  BUSINESS_DEVELOPER: "BD",
+  BUSINESS_DEVELOPER: "BUSINESS_DEVELOPER",
   GUEST: "GUEST"
 };
 
@@ -12,21 +10,19 @@ export const ROLES = {
 export const ROLE_LABELS = {
   ADMIN: "Administrateur",
   MANAGER: "Manager",
-  BD: "Business Developer",
+  BUSINESS_DEVELOPER: "Business Developer",
   GUEST: "Invité"
 };
 
 // --- Normalisation des rôles ----------------------------------------------
 // On accepte à la fois les codes ("ADMIN","BD","GUEST") et les libellés FR.
 const ROLE_ALIASES = {
-  ADMIN: "ADMIN",
   Administrateur: "ADMIN",
-  MANAGER: "MANAGER",
   Manager: "MANAGER",
-  BD: "BD",
-  "Business Developer": "BD",
+  "Business Developer": "BUSINESS_DEVELOPER",
   Invité: "GUEST",
-  GUEST: "GUEST",
+  // Ajout des clés canoniques pour l'auto-mapping
+  ...ROLES
 };
 
 function normalizeRole(role) {
@@ -36,43 +32,41 @@ function normalizeRole(role) {
 
 // --- Droits par rôle (canonique) ------------------------------------------
 const abilitiesByCanonicalRole = {
-  ADMIN: ["*"],
+  [ROLES.ADMIN]: ["*"],
 
-  MANAGER: [
+  [ROLES.MANAGER]: [
     "dashboard:read",
-    "deal:read",
-    "deal:create",
-    "deal:update",
-    "deal:delete",
-    "deal:export",
-    "deal:import",
-    "visit:read",
-    "visit:create",
-    "visit:update",
-    "visit:delete",
-    "visit:export",
-    "visit:import",
+
+    "deal:read","deal:create","deal:update","deal:delete",
+    "deal:export","deal:import",
+
+    "visit:read","visit:create","visit:update","visit:delete",
+    "visit:export","visit:import",
+
+    // Pipes — AJOUT des droits complets (incluant delete/import/export)
+    "pipe:read","pipe:create","pipe:update","pipe:delete",
+    "pipe:export","pipe:import",
+
     "objectives:update",
   ],
 
-  BD: [
+  [ROLES.BUSINESS_DEVELOPER]: [
     "dashboard:read",
-    "deal:read",
-    "deal:create",
-    "deal:update",
-    "deal:delete",
-    "deal:export",
-    "deal:import",
-    "visit:read",
-    "visit:create",
-    "visit:update",
-    "visit:delete",
-    "visit:export",
-    "visit:import",
-    "objectives:update",
+
+    "deal:read","deal:create","deal:update","deal:delete",
+    "deal:export","deal:import",
+
+    "visit:read","visit:create","visit:update","visit:delete",
+    "visit:export","visit:import",
+
+    // Pipes — autoriser delete pour cohérence avec le back (DELETE_OWN_PIPE)
+    "pipe:read","pipe:create","pipe:update","pipe:delete",
+    // (import/export pipes peuvent rester managés par Manager si tu préfères)
+    "pipe:import",
+    "pipe:export",
   ],
 
-  GUEST: [
+  [ROLES.GUEST]: [
     "dashboard:read",
     "deal:read",
     "visit:read",

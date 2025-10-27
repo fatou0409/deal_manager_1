@@ -1,5 +1,5 @@
 // frontapp/src/pages/pipe/PipeForm.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
@@ -23,7 +23,8 @@ export default function PipeForm() {
   const SECTEURS = useMemo(() => SAFE_OPTS(SECTEURS_RAW), []);
   const COMMERCIAUX = useMemo(() => SAFE_OPTS(COMMERCIAUX_RAW), []);
 
-  const CAN_CREATE = typeof can === "function" ? can("deal:create") : true;
+  // ✅ Utilise la permission pipe:create SANS fallback
+  const CAN_CREATE = typeof can === "function" ? can("pipe:create") : false;
 
   const [f, setF] = useState({
     client: "",
@@ -33,16 +34,28 @@ export default function PipeForm() {
     budget: "",
   });
 
+  // Debug : afficher la valeur de CAN_CREATE
+  useEffect(() => {
+    console.log("PipeForm - CAN_CREATE:", CAN_CREATE);
+    console.log("PipeForm - Token présent:", !!token);
+    console.log("PipeForm - can function:", typeof can);
+  }, [CAN_CREATE, token, can]);
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!CAN_CREATE) return toast.show("Tu n'as pas le droit de créer une pipe.", "error");
+    
+    console.log("PipeForm - Submit - CAN_CREATE:", CAN_CREATE);
+    
+    if (!CAN_CREATE) {
+      return toast.show("Tu n'as pas le droit de créer une pipe.", "error");
+    }
 
     // Validation des champs requis
     if (!f.client?.trim()) return toast.show("Le client est requis.", "error");
     if (!f.ic) return toast.show("L'IC est requis.", "error");
     if (!f.secteur) return toast.show("Le secteur est requis.", "error");
 
-    // Payload pour la table Pipe (seulement 5 champs + semestre)
+    // Payload pour la table Pipe (5 champs + semestre)
     const payload = {
       id: uid(),
       client: f.client.trim(),
@@ -54,12 +67,18 @@ export default function PipeForm() {
     };
 
     try {
-      // ✅ Utilise la route /pipes au lieu de /deals
+      console.log("PipeForm - Envoi à /pipes:", payload);
+      console.log("PipeForm - Token:", token ? "présent" : "absent");
+      
       const saved = await api.post("/pipes", payload, { token });
+      
+      console.log("PipeForm - Réponse:", saved);
       toast.show("Pipe créée avec succès.", "success");
       navigate("/pipe");
     } catch (e2) {
-      console.error('Erreur création pipe:', e2);
+      console.error('PipeForm - Erreur complète:', e2);
+      console.error('PipeForm - Status:', e2.status);
+      console.error('PipeForm - Message:', e2.message);
       toast.show(`Échec création pipe : ${e2.message}`, "error");
     }
   };
@@ -75,6 +94,8 @@ export default function PipeForm() {
           <p className="mt-1 text-white/80 text-sm">Renseigne l'opportunité en cours (budget estimatif).</p>
         </div>
       </div>
+
+      
 
       {/* Formulaire avec les 5 champs de la table Pipe */}
       <form onSubmit={submit} className="space-y-6">

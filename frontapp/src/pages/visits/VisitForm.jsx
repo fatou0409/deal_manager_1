@@ -8,6 +8,7 @@ import { useStore } from "../../store/useStore";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 import { useToast } from "../../components/ToastProvider";
 import { api } from "../../utils/api";
+import { uid } from "../../utils/format";
 
 const emptyVisit = {
   id: "",
@@ -22,11 +23,17 @@ const emptyVisit = {
 
 export default function VisitForm() {
   const { state, dispatch } = useStore();
-  const { can } = useAuth();
+  const { can, token } = useAuth(); // ✅ Ajout du token
   const toast = useToast();
 
   const CAN_CREATE = can("visit:create");
   const [form, setForm] = useState({ ...emptyVisit, semestre: state.selectedSemestre });
+
+  // Debug : afficher la valeur de CAN_CREATE
+  useEffect(() => {
+    console.log("VisitForm - CAN_CREATE:", CAN_CREATE);
+    console.log("VisitForm - Token présent:", !!token);
+  }, [CAN_CREATE, token]);
 
   useEffect(() => {
     setForm((f) => ({ ...f, semestre: state.selectedSemestre }));
@@ -34,14 +41,40 @@ export default function VisitForm() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!CAN_CREATE) return toast.show("Tu n’as pas le droit de créer une visite.", "error");
+    
+    console.log("VisitForm - Submit - CAN_CREATE:", CAN_CREATE);
+    
+    if (!CAN_CREATE) {
+      return toast.show("Tu n'as pas le droit de créer une visite.", "error");
+    }
+
+    // Validation des champs requis
+    if (!form.date) {
+      return toast.show("La date est requise.", "error");
+    }
+    if (!form.type) {
+      return toast.show("Le type est requis.", "error");
+    }
+    if (!form.client) {
+      return toast.show("Le client est requis.", "error");
+    }
+    if (!form.secteur) {
+      return toast.show("Le secteur est requis.", "error");
+    }
+
+    const payload = {
+      ...form,
+      id: form.id || uid(),
+    };
 
     try {
-      const saved = await api.post("/visits", form);
-      dispatch({ type: "ADD_VISIT", payload: saved || form });
+      console.log("VisitForm - Envoi à /visits:", payload);
+      const saved = await api.post("/visits", payload, { token }); // ✅ Token ajouté
+      dispatch({ type: "ADD_VISIT", payload: saved || payload });
       toast.show("Visite créée avec succès.", "success");
       setForm({ ...emptyVisit, semestre: state.selectedSemestre });
     } catch (err) {
+      console.error("VisitForm - Erreur:", err);
       toast.show(`Échec création visite : ${err.message}`, "error");
     }
   };
@@ -57,6 +90,8 @@ export default function VisitForm() {
           <p className="mt-1 text-white/80 text-sm">Planifie et documente ta visite client.</p>
         </div>
       </div>
+
+      
 
       {/* FORM */}
       <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -103,8 +138,9 @@ export default function VisitForm() {
         {/* Actions */}
         <div className="md:col-span-2 flex justify-end gap-2">
           <button
+            type="submit"
             disabled={!CAN_CREATE}
-            className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow"
+            className="px-4 py-2 rounded-xl bg-orange-600 text-white border border-orange-600 hover:bg-orange-500 transition font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Enregistrer
           </button>

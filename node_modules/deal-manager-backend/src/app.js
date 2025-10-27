@@ -9,7 +9,7 @@ import objectivesRouter from "./routes/objectives.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import usersRouter from "./routes/users.routes.js";
 import statsRouter from "./routes/stats.routes.js";
-import pipesRouter from "./routes/pipe.routes.js"; // ✅ Import des routes Pipe
+import pipesRouter from "./routes/pipes.routes.js"; // ✅ Import des routes Pipe
 
 export const app = express();
 

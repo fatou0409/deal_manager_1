@@ -7,17 +7,50 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Si tu utilises VITE_API_URL="/api" côté front, ces proxys couvrent l'API locale.
+      // 🔴 CORRIGÉ : Pas de rewrite, on garde /api
       '/api': {
         target: 'http://localhost:4001',
         changeOrigin: true,
         secure: false,
-        rewrite: (p) => p.replace(/^\/api/, ''),
+        // rewrite supprimé ! ✅
       },
-      // Chemins directs encore présents dans ton code historique
-      '/deals':      { target: 'http://localhost:4001', changeOrigin: true, secure: false },
-      '/visits':     { target: 'http://localhost:4001', changeOrigin: true, secure: false },
-      '/objectives': { target: 'http://localhost:4001', changeOrigin: true, secure: false },
+      
+      // Chemins directs pour compatibilité (sans /api)
+      '/deals': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/visits': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/objectives': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/auth': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/users': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/pipes': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
+      '/stats': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        secure: false
+      },
     },
   },
 })

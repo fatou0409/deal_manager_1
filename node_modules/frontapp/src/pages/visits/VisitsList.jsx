@@ -1,4 +1,4 @@
-// src/pages/visits/VisitsList.jsx - VERSION CORRIGÉE
+// src/pages/visits/VisitsList.jsx - VERSION AVEC TRAÇABILITÉ
 import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
@@ -16,10 +16,10 @@ export default function VisitsList() {
 
   const CAN_UPDATE = can("visit:update");
   const CAN_DELETE = can("visit:delete");
+  const CAN_VIEW_ALL = can("visit:view_all"); // ✅ Pour afficher la colonne "Créé par"
 
-  const [editingVisit, setEditingVisit] = useState(null); // Pour le modal d'édition
+  const [editingVisit, setEditingVisit] = useState(null);
 
-  // Helper pour convertir Date ISO -> yyyy-MM-dd pour input type="date"
   const toDateInputValue = (dateString) => {
     if (!dateString) return "";
     try {
@@ -30,7 +30,6 @@ export default function VisitsList() {
     }
   };
 
-  // Chargement initial depuis l'API
   useEffect(() => {
     (async () => {
       try {
@@ -42,20 +41,17 @@ export default function VisitsList() {
     })();
   }, [state.selectedSemestre, dispatch]);
 
-  // Ouvrir le modal d'édition
   const onEdit = (row) => {
     if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier une visite.", "error");
     setEditingVisit({ ...row });
   };
 
-  // Sauvegarde depuis le modal
   const saveEditedVisit = async () => {
     if (!editingVisit) return;
     
     try {
       const payload = {
         ...editingVisit,
-        // S'assurer que date est au format yyyy-MM-dd
         date: toDateInputValue(editingVisit.date),
       };
 
@@ -78,6 +74,23 @@ export default function VisitsList() {
       { key: "secteur", header: "Secteur" },
       { key: "sujet", header: "Sujet" },
       { key: "accompagnants", header: "Accompagnants" },
+      // ✅ NOUVELLE COLONNE : Créé par (visible uniquement pour ADMIN/MANAGER)
+      ...(CAN_VIEW_ALL ? [{
+        key: "user",
+        header: "Créé par",
+        render: (r) => (
+          <div className="text-xs">
+            <div className="font-medium text-gray-900">
+              {r.user?.name || "N/A"}
+            </div>
+            {r.user?.email && (
+              <div className="text-gray-500 text-[10px]">
+                {r.user.email}
+              </div>
+            )}
+          </div>
+        ),
+      }] : []),
       {
         key: "_actions",
         header: <div className="w-full text-center">Actions</div>,
@@ -112,10 +125,9 @@ export default function VisitsList() {
         ),
       },
     ],
-    [CAN_UPDATE, CAN_DELETE, dispatch, toast]
+    [CAN_UPDATE, CAN_DELETE, CAN_VIEW_ALL, dispatch, toast]
   );
 
-  // Import CSV/XLSX → POST API
   const handleImportVisits = async (rowsLower) => {
     const normalized = rowsLower.map((r) => ({
       id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
@@ -178,6 +190,21 @@ export default function VisitsList() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* ✅ AFFICHAGE DU CRÉATEUR DANS LE MODAL (si visible) */}
+              {CAN_VIEW_ALL && editingVisit.user && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <div>
+                      <p className="text-xs font-semibold text-orange-900">Créé par</p>
+                      <p className="text-sm text-orange-700">{editingVisit.user.name || editingVisit.user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Section 1 : Planification */}
               <div>
                 <h4 className="text-sm font-semibold text-orange-600 mb-3">Planification</h4>
