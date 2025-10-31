@@ -1,18 +1,25 @@
-// src/pages/AdminUsers.jsx
+// src/pages/AdminUsers.jsx - VERSION CORRIGÉE : Badge rôle + Modal édition
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import { api } from "../utils/api"; // 🔴 CORRIGÉ : Bon chemin
+import { api } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
 
-// 🔴 Définition locale des rôles (à adapter selon votre fichier permissions)
 const ROLES = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
-  BUSINESS_DEVELOPER: 'BUSINESS_DEVELOPER', // 🔴 Nom complet
+  BUSINESS_DEVELOPER: 'BUSINESS_DEVELOPER',
   GUEST: 'GUEST'
 };
 
 const ALL_ROLES = Object.values(ROLES);
+
+// ✅ Configuration des badges de rôles
+const ROLE_BADGES = {
+  ADMIN: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', label: 'Admin' },
+  MANAGER: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', label: 'Manager' },
+  BUSINESS_DEVELOPER: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', label: 'Business Dev' },
+  GUEST: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', label: 'Invité' }
+};
 
 function genPwd() {
   return Math.random().toString(36).slice(2, 10) + "!";
@@ -26,15 +33,18 @@ export default function AdminUsers() {
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ 
     email: "", 
-    role: ROLES.BUSINESS_DEVELOPER, // 🔴 CORRIGÉ
+    role: ROLES.BUSINESS_DEVELOPER,
     password: genPwd() 
   });
   const [loadingUsers, setLoadingUsers] = useState(false);
+  
+  // ✅ États pour le modal d'édition
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", role: "", isActive: true });
 
-  // 🔴 CORRIGÉ : Chargement depuis l'API
   useEffect(() => {
     setLoadingUsers(true);
-    api.get("/users") // 🔴 Utiliser api.get()
+    api.get("/users")
       .then(data => {
         console.log('Utilisateurs chargés:', data);
         setUsers(data);
@@ -66,7 +76,6 @@ export default function AdminUsers() {
     return admins.length === 1 && admins[0].id === id;
   }
 
-  // 🔴 CORRIGÉ : Création utilisateur
   const addUser = async (e) => {
     e.preventDefault();
     const email = form.email.trim().toLowerCase();
@@ -85,7 +94,7 @@ export default function AdminUsers() {
         email, 
         password: form.password, 
         role: form.role,
-        name: email.split('@')[0] // Nom par défaut
+        name: email.split('@')[0]
       });
       
       setUsers((prev) => [newUser, ...prev]);
@@ -97,25 +106,36 @@ export default function AdminUsers() {
     }
   };
 
-  // 🔴 CORRIGÉ : Changement de rôle
-  const changeRole = async (id, role) => {
-    if (!ALL_ROLES.includes(role)) return;
-    if (isLastAdmin(id) && role !== ROLES.ADMIN) {
+  // ✅ Ouvrir le modal d'édition
+  const openEditModal = (u) => {
+    setEditingUser(u);
+    setEditForm({
+      name: u.name || "",
+      role: u.role,
+      isActive: u.isActive ?? true
+    });
+  };
+
+  // ✅ Sauvegarder les modifications
+  const saveEdit = async () => {
+    if (!editingUser) return;
+    
+    if (isLastAdmin(editingUser.id) && editForm.role !== ROLES.ADMIN) {
       toast.show("Impossible de retirer le dernier Administrateur.", "error");
       return;
     }
     
     try {
-      const updated = await api.put(`/users/${id}`, { role });
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
-      toast.show("Rôle mis à jour", "success");
+      const updated = await api.patch(`/users/${editingUser.id}`, editForm);
+      setUsers((prev) => prev.map((u) => (u.id === editingUser.id ? { ...u, ...editForm } : u)));
+      toast.show("Utilisateur mis à jour", "success");
+      setEditingUser(null);
     } catch (err) {
-      console.error('Erreur changement rôle:', err);
-      toast.show(err.message || "Erreur changement de rôle", "error");
+      console.error('Erreur mise à jour:', err);
+      toast.show(err.message || "Erreur mise à jour utilisateur", "error");
     }
   };
 
-  // 🔴 CORRIGÉ : Suppression
   const removeUser = async (id) => {
     if (isLastAdmin(id)) {
       toast.show("Impossible de supprimer le dernier Administrateur.", "error");
@@ -133,11 +153,10 @@ export default function AdminUsers() {
     }
   };
 
-  // 🔴 CORRIGÉ : Reset mot de passe
   const resetPassword = async (id) => {
     const pwd = genPwd();
     try {
-      await api.put(`/users/${id}`, { password: pwd });
+      await api.patch(`/users/${id}`, { password: pwd });
       const u = users.find(u => u.id === id);
       toast.show(`Nouveau mot de passe pour ${u?.email} : ${pwd}`, "success");
     } catch (err) {
@@ -156,7 +175,6 @@ export default function AdminUsers() {
     }
   };
 
-  // Filtre
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return users;
@@ -165,7 +183,6 @@ export default function AdminUsers() {
     );
   }, [users, q]);
 
-  // Guards
   if (loading || loadingUsers) {
     return (
       <div className="min-h-[40vh] grid place-items-center text-black/70">
@@ -190,7 +207,6 @@ export default function AdminUsers() {
     );
   }
 
-  // UI
   return (
     <div className="space-y-6 animate-fade-in">
       {/* HERO */}
@@ -207,7 +223,6 @@ export default function AdminUsers() {
             Administration — Utilisateurs
           </h2>
           
-
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Administrateurs", value: countByRole[ROLES.ADMIN] || 0 },
@@ -229,7 +244,6 @@ export default function AdminUsers() {
 
       {/* Barre d'action */}
       <div className="flex flex-col md:flex-row gap-3">
-        {/* Formulaire ajout */}
         <form 
           onSubmit={addUser} 
           className="flex-1 rounded-2xl border border-black/10 bg-white p-4 shadow-sm"
@@ -250,7 +264,7 @@ export default function AdminUsers() {
               className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-600"
             >
               {ALL_ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>{ROLE_BADGES[r]?.label || r}</option>
               ))}
             </select>
             <input
@@ -267,7 +281,6 @@ export default function AdminUsers() {
           </div>
         </form>
 
-        {/* Recherche */}
         <div className="md:w-72 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
           <div className="font-semibold text-black mb-3">Recherche</div>
           <input
@@ -280,7 +293,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* ✅ TABLE AVEC BADGE RÔLE */}
       <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
@@ -299,51 +312,152 @@ export default function AdminUsers() {
                 </td>
               </tr>
             ) : (
-              filtered.map((u) => (
-                <tr key={u.id} className="border-t border-black/5">
-                  <td className="py-2">{u.email}</td>
-                  <td className="py-2">
-                    <select
-                      value={u.role}
-                      onChange={(e) => changeRole(u.id, e.target.value)}
-                      className="rounded-lg border border-black/10 bg-white px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-orange-600"
-                    >
-                      {ALL_ROLES.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-2">
-                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="py-2">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => copyAccess(u)}
-                        className="px-2 py-1 text-xs rounded-lg border border-black/10 hover:bg-orange-50"
-                      >
-                        Copier
-                      </button>
-                      <button
-                        onClick={() => resetPassword(u.id)}
-                        className="px-2 py-1 text-xs rounded-lg border border-black/10 hover:bg-orange-50"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        onClick={() => removeUser(u.id)}
-                        className="px-2 py-1 text-xs rounded-lg border border-black/10 hover:bg-red-50 text-red-600"
-                      >
-                        Suppr.
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              filtered.map((u) => {
+                const badge = ROLE_BADGES[u.role] || ROLE_BADGES.GUEST;
+                return (
+                  <tr key={u.id} className="border-t border-black/5">
+                    <td className="py-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{u.email}</div>
+                        {u.name && <div className="text-xs text-gray-500">{u.name}</div>}
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      {/* ✅ BADGE RÔLE au lieu du dropdown */}
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${badge.bg} ${badge.text} ${badge.border}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td className="py-3 text-gray-600">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR') : '—'}
+                    </td>
+                    <td className="py-3">
+                      <div className="flex justify-end gap-2">
+                        {/* ✅ BOUTON ÉDITER */}
+                        <button
+                          onClick={() => openEditModal(u)}
+                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                        >
+                          Éditer
+                        </button>
+                        <button
+                          onClick={() => copyAccess(u)}
+                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition"
+                        >
+                          Copier
+                        </button>
+                        <button
+                          onClick={() => resetPassword(u.id)}
+                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={() => removeUser(u.id)}
+                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
+                        >
+                          Suppr.
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {/* ✅ MODAL D'ÉDITION */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-600 to-orange-500 text-white p-6 rounded-t-3xl">
+              <h3 className="text-xl font-bold">Modifier l'utilisateur</h3>
+              <p className="text-sm text-white/80 mt-1">{editingUser.email}</p>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {/* Nom */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1.5">
+                  Nom
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="Nom de l'utilisateur"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none"
+                />
+              </div>
+
+              {/* Rôle */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1.5">
+                  Rôle <span className="text-orange-600">*</span>
+                </label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+                >
+                  {ALL_ROLES.map((r) => (
+                    <option key={r} value={r}>{ROLE_BADGES[r]?.label || r}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Statut actif */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={editForm.isActive}
+                  onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
+                />
+                <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
+                  Compte actif
+                </label>
+              </div>
+
+              {/* Info dernière admin */}
+              {isLastAdmin(editingUser.id) && editForm.role !== ROLES.ADMIN && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="text-xs text-red-700">
+                      <div className="font-semibold">Attention</div>
+                      <div>C'est le dernier administrateur. Impossible de retirer ce rôle.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <button
+                onClick={() => setEditingUser(null)}
+                className="px-4 py-2 rounded-xl bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition font-medium text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveEdit}
+                className="px-4 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-500 transition font-semibold text-sm"
+              >
+                Sauvegarder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <style>{`
         @keyframes fade-in {

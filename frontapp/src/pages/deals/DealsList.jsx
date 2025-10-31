@@ -1,4 +1,4 @@
-// src/pages/deals/DealsList.jsx - VERSION FINALE AVEC TRAÇABILITÉ
+// src/pages/deals/DealsList.jsx - VERSION FINALE AVEC FILTRES + CORRECTION MANAGER
 import { useEffect, useMemo, useState } from "react";
 import DataTablePro from "../../components/DataTablePro";
 import ImportExportBar from "../../components/ImportExportBar";
@@ -10,17 +10,36 @@ import { useToast } from "../../components/ToastProvider";
 import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 
+// ✅ Helper pour déterminer si c'est une année complète
+function isYearFilter(semestre) {
+  return semestre?.includes("-Année");
+}
+
+// ✅ Helper pour obtenir les semestres à filtrer
+function getSemestresForFilter(semestre) {
+  if (isYearFilter(semestre)) {
+    const year = semestre.split("-")[0];
+    return [`${year}-S1`, `${year}-S2`];
+  }
+  return [semestre];
+}
+
 export default function DealsList() {
   const { state, dispatch } = useStore();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
   const CAN_UPDATE = can("deal:update");
   const CAN_DELETE = can("deal:delete");
-  const CAN_VIEW_ALL = can("deal:view_all"); // ✅ Pour afficher la colonne "Créé par"
+  const CAN_VIEW_ALL = user?.role === 'ADMIN' || user?.role === 'MANAGER'; // ✅ CORRIGÉ
 
   const [editingDeal, setEditingDeal] = useState(null);
+  
+  // ✅ États pour les filtres
+  const [semestreFilter, setSemestreFilter] = useState(state.selectedSemestre);
+  const [bdFilter, setBdFilter] = useState("all"); // "all" ou userId
+  const [businessDevelopers, setBusinessDevelopers] = useState([]);
 
   const toDateInputValue = (dateString) => {
     if (!dateString) return "";
@@ -32,21 +51,48 @@ export default function DealsList() {
     }
   };
 
+  // ✅ Charger la liste des BDs (uniquement pour Admin/Manager)
+  useEffect(() => {
+    if (CAN_VIEW_ALL) {
+      (async () => {
+        try {
+          const users = await api.get('/users');
+          const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
+          setBusinessDevelopers(bds);
+        } catch (e) {
+          console.warn("Erreur chargement BDs:", e.message);
+        }
+      })();
+    }
+  }, [CAN_VIEW_ALL]);
+
+  // ✅ Charger les deals en fonction des filtres
   useEffect(() => {
     (async () => {
       try {
-        const rows = await api.get(`/deals?semestre=${encodeURIComponent(state.selectedSemestre)}`);
+        // Construire les paramètres de l'URL
+        const params = new URLSearchParams();
+        if (semestreFilter) params.set('semestre', semestreFilter);
+        if (CAN_VIEW_ALL && bdFilter !== 'all') {
+          params.set('ownerId', bdFilter); // Le backend doit supporter ce filtre
+        }
+
+        const rows = await api.get(`/deals?${params.toString()}`);
         dispatch({ type: "SET_DEALS", payload: rows || [] });
       } catch (e) {
         console.warn("GET /deals failed:", e.message);
       }
     })();
-  }, [state.selectedSemestre, dispatch]);
+  }, [dispatch, semestreFilter, bdFilter, CAN_VIEW_ALL]);
 
-  const dealsOfSemestre = useMemo(
-    () => state.deals.filter((d) => d.semestre === state.selectedSemestre),
-    [state.deals, state.selectedSemestre]
-  );
+  // ✅ Filtrage des deals selon semestre + BD
+  const filteredDeals = useMemo(() => {
+    let deals = state.deals;
+
+    // Filtre par semestre (avec support année)
+    const semestres = getSemestresForFilter(semestreFilter);
+    return state.deals.filter(d => semestres.includes(d.semestre));
+  }, [state.deals, semestreFilter]);
 
   const onEditModal = (row) => {
     if (!CAN_UPDATE) return toast.show("Tu n'as pas le droit de modifier un deal.", "error");
@@ -104,7 +150,6 @@ export default function DealsList() {
         render: (r) => fmtFCFA(r.marge || 0),
       },
       { key: "statut", header: "Statut" },
-      // ✅ NOUVELLE COLONNE : Créé par (visible uniquement pour ADMIN/MANAGER)
       ...(CAN_VIEW_ALL ? [{
         key: "owner",
         header: "Créé par",
@@ -186,16 +231,16 @@ export default function DealsList() {
         <div className="relative p-6 md:p-8">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-              Liste des Deals — {state.selectedSemestre}
+              Liste des Deals
             </h2>
 
             <div className="flex items-center gap-3">
               <ImportExportBar
                 resource="deal"
-                title={`Deals — ${state.selectedSemestre}`}
-                filename={`Deals-${state.selectedSemestre}`}
+                title={`Deals — ${semestreFilter}`}
+                filename={`Deals-${semestreFilter}`}
                 columns={columns.filter(c => c.key && !c.key.startsWith("_"))}
-                rows={dealsOfSemestre}
+                rows={filteredDeals}
                 onImportRows={handleImportDeals}
               />
               <Link to="/deals/new" className="inline-flex items-center gap-2 rounded-xl bg-white/10 text-white px-3 py-1.5 border border-white/20 hover:bg-white/20 transition text-sm">
@@ -206,9 +251,81 @@ export default function DealsList() {
         </div>
       </div>
 
+      {/* ✅ SECTION FILTRES */}
+      <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Filtre Semestre */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Semestre
+            </label>
+            <select
+              value={semestreFilter}
+              onChange={(e) => setSemestreFilter(e.target.value)}
+              className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+            >
+              {SEMESTRES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtre BD (uniquement pour Admin/Manager) */}
+          {CAN_VIEW_ALL && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Business Developer
+              </label>
+              <select
+                value={bdFilter}
+                onChange={(e) => setBdFilter(e.target.value)}
+                className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
+              >
+                <option value="all">Tous les BDs</option>
+                {businessDevelopers.map((bd) => (
+                  <option key={bd.id} value={bd.id}>
+                    {bd.name || bd.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Bouton Réinitialiser */}
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setSemestreFilter(state.selectedSemestre);
+                setBdFilter("all");
+              }}
+              className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 hover:bg-orange-100 transition"
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+
+        {/* Indicateur de filtre actif */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {semestreFilter !== state.selectedSemestre && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700">
+              Semestre: {semestreFilter}
+            </span>
+          )}
+          {CAN_VIEW_ALL && bdFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700">
+              BD: {businessDevelopers.find(bd => bd.id === bdFilter)?.name || "Sélectionné"}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* TABLE */}
       <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm overflow-x-auto">
-        <DataTablePro columns={columns} rows={dealsOfSemestre} />
+        <div className="mb-3 text-sm text-gray-600">
+          {filteredDeals.length} deal(s) trouvé(s)
+        </div>
+        <DataTablePro columns={columns} rows={filteredDeals} />
       </div>
 
       {/* MODAL D'ÉDITION */}
@@ -220,7 +337,6 @@ export default function DealsList() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* ✅ AFFICHAGE DU CRÉATEUR DANS LE MODAL (si visible) */}
               {CAN_VIEW_ALL && editingDeal.owner && (
                 <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
                   <div className="flex items-center gap-2">
@@ -235,7 +351,6 @@ export default function DealsList() {
                 </div>
               )}
 
-              {/* Section 1 : Informations client */}
               <div>
                 <h4 className="text-sm font-semibold text-orange-600 mb-3">Informations client</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,7 +408,6 @@ export default function DealsList() {
                 </div>
               </div>
 
-              {/* Section 2 : Détails commerciaux */}
               <div>
                 <h4 className="text-sm font-semibold text-orange-600 mb-3">Détails commerciaux</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -355,7 +469,7 @@ export default function DealsList() {
                       className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-600 outline-none bg-white"
                     >
                       <option value="">— Sélectionner —</option>
-                      {SEMESTRES.map((s) => (
+                      {SEMESTRES.filter(s => !s.includes("-Année")).map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -379,7 +493,6 @@ export default function DealsList() {
                 </div>
               </div>
 
-              {/* Section 3 : Chiffres clés */}
               <div>
                 <h4 className="text-sm font-semibold text-orange-600 mb-3">Chiffres clés</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -409,7 +522,6 @@ export default function DealsList() {
                 </div>
               </div>
 
-              {/* Boutons d'action */}
               <div className="flex justify-end gap-2 pt-4 border-t border-black/10">
                 <button
                   onClick={() => setEditingDeal(null)}

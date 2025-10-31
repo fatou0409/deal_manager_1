@@ -68,7 +68,7 @@ router.post("/", authenticate, async (req, res, next) => {
     
     const created = await prisma.visit.create({
       data: {
-        date:          parseDate(b.date),
+        date:          b.date ? parseDate(b.date) : new Date(), // ✅ Correction
         type:          b.type ?? "",
         semestre:      b.semestre ?? "",
         client:        b.client ?? "",

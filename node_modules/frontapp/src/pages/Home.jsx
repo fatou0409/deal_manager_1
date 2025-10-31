@@ -20,9 +20,9 @@ export default function Home() {
     },
     {
       to: "/dashboard",
-      title: "KPIs & objectifs",
+      title: "Tableau de bord",
       desc: "Visualiser CA, marge, objectifs et analyses par semestre.",
-      badge: "KPIs",
+      badge: "TDB",
     },
   ];
 

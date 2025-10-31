@@ -44,6 +44,9 @@ function Item({ to, end, icon, label, badge }) {
 
 export default function Sidebar({ badges = {} }) {
   const { user } = useAuth();
+  
+  // ✅ Vérification des rôles pour afficher "Objectifs"
+  const canManageObjectives = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
     <aside className="w-64 shrink-0">
@@ -59,8 +62,10 @@ export default function Sidebar({ badges = {} }) {
           {/* Visites & Suivi = historique par défaut */}
           <Item to="/visits" end icon="calendar" label="Visites & Suivi" badge={badges.visits} />
 
-          {/* Objectifs -> page d'édition par défaut */}
-          <Item to="/objectives" icon="target" label="Objectifs" />
+          {/* ✅ Objectifs -> visible uniquement pour ADMIN et MANAGER */}
+          {canManageObjectives && (
+            <Item to="/objectives" icon="target" label="Objectifs" />
+          )}
 
           {/* Pipe */}
           <Item to="/pipe" icon="dashboard" label="Pipe" />

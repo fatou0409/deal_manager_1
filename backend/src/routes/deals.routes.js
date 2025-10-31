@@ -59,8 +59,6 @@ router.get("/", authenticate, applyOwnershipFilter, async (req, res, next) => {
 router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensureOwnerId, async (req, res, next) => {
   try {
     const b = req.body || {};
-    const s = (b.statut || "").toString().toLowerCase();
-    const isGagne = s.startsWith("gagn") || s === "won";
 
     // L'ownerId est maintenant géré par le middleware `ensureOwnerId`
     if (!b.ownerId) {
@@ -72,13 +70,13 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensur
         projet:       b.projet ?? "",
         client:       b.client ?? "",
         secteur:      b.secteur ?? "",
-        dateCreation: parseDate(b.dateCreation),
+        dateCreation: b.dateCreation ? parseDate(b.dateCreation) : new Date(), // ✅ Correction
         typeDeal:     b.typeDeal ?? null,
         commercial:   b.commercial ?? null,
         supportAV:    b.supportAV ?? null,
         semestre:     b.semestre ?? "",
-        ca:           isGagne ? Number(b.ca ?? 0) : 0,
-        marge:        isGagne ? Number(b.marge ?? 0) : 0,
+        ca:           Number(b.ca ?? 0), // ✅ Correction
+        marge:        Number(b.marge ?? 0), // ✅ Correction
         statut:       b.statut ?? "",
         ownerId:      b.ownerId,
       },
@@ -110,8 +108,6 @@ router.put("/:id", authenticate, requirePermission(PERMISSIONS.EDIT_OWN_DEAL), r
     const { id } = req.params;
     
     const b = req.body || {};
-    const s = (b.statut ?? "").toString().toLowerCase();
-    const isGagne = s.startsWith("gagn") || s === "won";
 
     const updated = await prisma.deal.update({
       where: { id },
@@ -124,8 +120,8 @@ router.put("/:id", authenticate, requirePermission(PERMISSIONS.EDIT_OWN_DEAL), r
         commercial:   b.commercial,
         supportAV:    b.supportAV,
         semestre:     b.semestre,
-        ca:           isGagne ? Number(b.ca ?? 0) : 0,
-        marge:        isGagne ? Number(b.marge ?? 0) : 0,
+        ca:           Number(b.ca ?? 0), // ✅ Correction
+        marge:        Number(b.marge ?? 0), // ✅ Correction
         statut:       b.statut,
       },
       include: {

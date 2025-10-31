@@ -10,32 +10,26 @@ import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES } from "../../utils/constants";
 
 export default function PipeList() {
-  const { state } = useStore();
-  const { can, token } = useAuth();
+  const { state, dispatch } = useStore();
+  const { can } = useAuth();
   const toast = useToast();
 
   const CAN_UPDATE = can("pipe:update");
   const CAN_DELETE = can("pipe:delete");
 
-  const [pipes, setPipes] = useState([]);
   const [editingPipe, setEditingPipe] = useState(null); // Pour le modal d'édition
 
   // Chargement initial depuis l'API
   useEffect(() => {
     (async () => {
       try {
-        const rows = await api.get(`/pipes?semestre=${encodeURIComponent(state.selectedSemestre)}`, { token });
-        setPipes(Array.isArray(rows) ? rows : []);
+        const rows = await api.get(`/pipes?semestre=${encodeURIComponent(state.selectedSemestre)}`);
+        dispatch({ type: "SET_PIPES", payload: Array.isArray(rows) ? rows : [] });
       } catch (e) {
         console.warn("GET /pipes failed:", e.message);
       }
     })();
-  }, [state.selectedSemestre, token]);
-
-  const pipesOfSemestre = useMemo(
-    () => pipes.filter((p) => p.semestre === state.selectedSemestre),
-    [pipes, state.selectedSemestre]
-  );
+  }, [state.selectedSemestre, dispatch]);
 
   // Ouvrir le modal d'édition
   const onEditModal = (row) => {
@@ -58,8 +52,8 @@ export default function PipeList() {
         semestre: state.selectedSemestre,
       };
 
-      const saved = await api.put(`/pipes/${editingPipe.id}`, payload, { token });
-      setPipes(prev => prev.map(p => p.id === editingPipe.id ? (saved || payload) : p));
+      const saved = await api.put(`/pipes/${editingPipe.id}`, payload);
+      dispatch({ type: "UPDATE_PIPE", payload: saved || payload });
       toast.show("Pipe mise à jour avec succès.", "success");
       setEditingPipe(null);
     } catch (err) {
@@ -72,8 +66,8 @@ export default function PipeList() {
     if (!CAN_DELETE) return toast.show("Tu n'as pas le droit de supprimer une pipe.", "error");
     if (!confirm("Supprimer cette pipe ?")) return;
     try {
-      await api.del(`/pipes/${id}`, { token });
-      setPipes(prev => prev.filter(p => p.id !== id));
+      await api.del(`/pipes/${id}`);
+      dispatch({ type: "DELETE_PIPE", payload: id });
       toast.show("Pipe supprimée.", "success");
     } catch (e) {
       toast.show(`Suppression impossible : ${e.message}`, "error");
@@ -132,9 +126,9 @@ export default function PipeList() {
     }));
 
     try {
-      for (const p of normalized) {
-        const saved = await api.post("/pipes", p, { token });
-        setPipes(prev => [...prev, saved || p]);
+      for (const pipe of normalized) {
+        const saved = await api.post("/pipes", pipe);
+        dispatch({ type: "ADD_PIPE", payload: saved || pipe });
       }
       toast.show(`Import de ${normalized.length} pipe(s) réussi.`, "success");
     } catch (e) {
@@ -160,7 +154,7 @@ export default function PipeList() {
                 title={`Pipes — ${state.selectedSemestre}`}
                 filename={`Pipes-${state.selectedSemestre}`}
                 columns={columns.filter(c => c.key && !c.key.startsWith("_"))}
-                rows={pipesOfSemestre}
+                rows={state.pipes}
                 onImportRows={handleImportPipes}
               />
               <Link to="/pipe/new" className="inline-flex items-center gap-2 rounded-xl bg-white/10 text-white px-3 py-1.5 border border-white/20 hover:bg-white/20 transition text-sm">
@@ -173,7 +167,7 @@ export default function PipeList() {
 
       {/* TABLE */}
       <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-        <DataTablePro columns={columns} rows={pipesOfSemestre} />
+        <DataTablePro columns={columns} rows={state.pipes} />
       </div>
 
       {/* MODAL D'ÉDITION */}

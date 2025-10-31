@@ -10,6 +10,7 @@ import AdminUsers from "./pages/AdminUsers";
 import ChangePassword from "./pages/ChangePassword";
 import ResetAdmin from "./pages/ResetAdmin";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import { useAuth } from "./auth/AuthProvider";
 
 // Deals & Visits
 import DealsList from "./pages/deals/DealsList";
@@ -24,6 +25,18 @@ import ObjectivesForm from "./pages/objectives/ObjectivesForm";
 // Pipe
 import PipeList from "./pages/pipe/PipeList";
 import PipeForm from "./pages/pipe/PipeForm";
+
+// ✅ Composant pour protéger la route Objectifs
+function ObjectivesProtectedRoute({ children }) {
+  const { user } = useAuth();
+  
+  // Seuls ADMIN et MANAGER peuvent accéder
+  if (user?.role !== "ADMIN" && user?.role !== "MANAGER") {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+}
 
 export default function App() {
   const badges = { deals: undefined, visits: undefined };
@@ -58,9 +71,23 @@ export default function App() {
             <Route path="/visits" element={<VisitsList />} />
             <Route path="/visits/new" element={<VisitForm />} />
 
-            {/* Objectives */}
-            <Route path="/objectives" element={<ObjectivesList />} />
-            <Route path="/objectives/new" element={<ObjectivesForm />} />
+            {/* ✅ Objectives - PROTÉGÉ : Seulement ADMIN et MANAGER */}
+            <Route 
+              path="/objectives" 
+              element={
+                <ObjectivesProtectedRoute>
+                  <ObjectivesList />
+                </ObjectivesProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/objectives/new" 
+              element={
+                <ObjectivesProtectedRoute>
+                  <ObjectivesForm />
+                </ObjectivesProtectedRoute>
+              } 
+            />
             {/* filet de sécurité pour anciens chemins */}
             <Route path="/objectives/*" element={<Navigate to="/objectives" replace />} />
 
