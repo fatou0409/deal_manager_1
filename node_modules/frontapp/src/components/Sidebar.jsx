@@ -50,7 +50,7 @@ export default function Sidebar({ badges = {} }) {
 
   return (
     <aside className="w-64 shrink-0">
-      <div className="sticky top-16 h-[calc(100vh-64px)] overflow-y-auto bg-white px-4 py-6 shadow-xl rounded-r-3xl border-r border-gray-100">
+  <div className="sticky top-[var(--header-height)] h-[calc(100vh-var(--header-height))] overflow-y-auto bg-white px-4 py-6 shadow-xl rounded-r-3xl border-r border-gray-100">
         <nav className="flex flex-col gap-1">
           {/* Pages principales */}
           <Item to="/" end icon="home" label="Accueil" />

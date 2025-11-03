@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import Select from "../../components/Select";
 import FormField from "../../components/FormField";
 import TextInput from "../../components/TextInput";
@@ -70,7 +70,7 @@ export default function PipeForm() {
       console.log("PipeForm - Envoi à /pipes:", payload);
       console.log("PipeForm - Token:", token ? "présent" : "absent");
       
-      const saved = await api.post("/pipes", payload, { token });
+  const saved = await api("/pipes", { method: "POST", body: payload });
       
       console.log("PipeForm - Réponse:", saved);
       toast.show("Pipe créée avec succès.", "success");

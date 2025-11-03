@@ -126,7 +126,7 @@ router.delete("/:id",
       await prisma.pipe.delete({ where: { id } });
       res.status(204).end();
     } catch (e) { 
-      next(e); 
+      next(e); lot
     }
   }
 );

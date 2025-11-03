@@ -60,6 +60,9 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensur
   try {
     const b = req.body || {};
 
+    // Debug log temporaire pour tracer qui crée le deal et le body reçu
+    console.log('[DEBUG] POST /api/deals - user=', req.user && { id: req.user.id, role: req.user.role }, ' bodyOwnerId=', b.ownerId);
+
     // L'ownerId est maintenant géré par le middleware `ensureOwnerId`
     if (!b.ownerId) {
       return res.status(400).json({ message: "ownerId est manquant et n'a pas été défini par le middleware." });
@@ -91,6 +94,7 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensur
         }
       }
     });
+    console.log('[DEBUG] POST /api/deals - created.id=', created.id, ' ownerId=', created.ownerId);
     
     res.status(201).json(created);
   } catch (e) { 

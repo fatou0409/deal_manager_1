@@ -1,7 +1,7 @@
 // src/pages/AdminUsers.jsx - VERSION CORRIGÉE : Badge rôle + Modal édition
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import { api } from "../utils/api";
+import { api } from "../lib/api";
 import { useToast } from "../components/ToastProvider";
 
 const ROLES = {
@@ -44,7 +44,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     setLoadingUsers(true);
-    api.get("/users")
+    api('/users')
       .then(data => {
         console.log('Utilisateurs chargés:', data);
         setUsers(data);
@@ -90,12 +90,12 @@ export default function AdminUsers() {
     }
     
     try {
-      const newUser = await api.post("/users", { 
+      const newUser = await api("/users", { method: "POST", body: { 
         email, 
         password: form.password, 
         role: form.role,
         name: email.split('@')[0]
-      });
+      } });
       
       setUsers((prev) => [newUser, ...prev]);
       toast.show(`Utilisateur créé: ${email}`, "success");
@@ -126,7 +126,7 @@ export default function AdminUsers() {
     }
     
     try {
-      const updated = await api.patch(`/users/${editingUser.id}`, editForm);
+  const updated = await api(`/users/${editingUser.id}`, { method: "PATCH", body: editForm });
       setUsers((prev) => prev.map((u) => (u.id === editingUser.id ? { ...u, ...editForm } : u)));
       toast.show("Utilisateur mis à jour", "success");
       setEditingUser(null);
@@ -144,7 +144,7 @@ export default function AdminUsers() {
     if (!window.confirm("Supprimer cet utilisateur ?")) return;
     
     try {
-      await api.del(`/users/${id}`);
+  await api(`/users/${id}`, { method: "DELETE" });
       setUsers((prev) => prev.filter((u) => u.id !== id));
       toast.show("Utilisateur supprimé", "success");
     } catch (err) {
@@ -156,7 +156,7 @@ export default function AdminUsers() {
   const resetPassword = async (id) => {
     const pwd = genPwd();
     try {
-      await api.patch(`/users/${id}`, { password: pwd });
+  await api(`/users/${id}`, { method: "PATCH", body: { password: pwd } });
       const u = users.find(u => u.id === id);
       toast.show(`Nouveau mot de passe pour ${u?.email} : ${pwd}`, "success");
     } catch (err) {

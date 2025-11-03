@@ -1,20 +1,33 @@
 import React, { useEffect, useState } from "react";
 import EditDeal from "./EditDeal.jsx";
+import { api } from "../lib/api";
 
 const DealsList = () => {
   const [deals, setDeals] = useState([]);
   const [editingDeal, setEditingDeal] = useState(null);
 
   useEffect(() => {
-  fetch(import.meta.env.VITE_API_URL + "/deals")
-      .then(res => res.json())
-      .then(data => setDeals(data));
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await api("/deals");
+        if (mounted) setDeals(data || []);
+      } catch (err) {
+        console.error("Erreur chargement deals:", err);
+      }
+    })();
+    return () => { mounted = false };
   }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Voulez-vous vraiment supprimer ce deal ?")) return;
-  await fetch(`${import.meta.env.VITE_API_URL}/deals/${id}`, { method: "DELETE" });
-    setDeals(deals.filter(d => d.id !== id));
+    try {
+      await api(`/deals/${id}`, { method: "DELETE" });
+      setDeals(deals.filter(d => d.id !== id));
+    } catch (err) {
+      console.error("Erreur suppression deal:", err);
+      alert(`Erreur suppression: ${err.message}`);
+    }
   };
 
   const handleUpdate = (updatedDeal) => {
@@ -27,7 +40,7 @@ const DealsList = () => {
       {editingDeal ? (
         <EditDeal
           deal={editingDeal}
-          onUpdate={handleUpdate}
+          onSave={handleUpdate}
           onCancel={() => setEditingDeal(null)}
         />
       ) : (

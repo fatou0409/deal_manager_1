@@ -64,7 +64,10 @@ router.post("/", authenticate, async (req, res, next) => {
     }
     
     const b = req.body || {};
-    const visitUserId = role === ROLES.BUSINESS_DEVELOPER ? userId : (b.userId || userId);
+  const visitUserId = role === ROLES.BUSINESS_DEVELOPER ? userId : (b.userId || userId);
+
+  // Debug log temporaire pour tracer qui crée la visite et le body reçu
+  console.log('[DEBUG] POST /api/visits - user=', req.user && { id: req.user.id, role: req.user.role }, ' body.userId=', b.userId, ' resolvedUserId=', visitUserId);
     
     const created = await prisma.visit.create({
       data: {
@@ -88,6 +91,7 @@ router.post("/", authenticate, async (req, res, next) => {
         }
       }
     });
+    console.log('[DEBUG] POST /api/visits - created.id=', created.id, ' userId=', created.userId);
     
     res.status(201).json(created);
   } catch (e) { 

@@ -7,7 +7,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { fmtFCFA, uid } from "../../utils/format";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 
 // ✅ Helper pour déterminer si c'est une année complète
@@ -56,7 +56,7 @@ export default function DealsList() {
     if (CAN_VIEW_ALL) {
       (async () => {
         try {
-          const users = await api.get('/users');
+          const users = await api('/users');
           const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
           setBusinessDevelopers(bds);
         } catch (e) {
@@ -69,7 +69,7 @@ export default function DealsList() {
   // ✅ Charger les deals en fonction des filtres
   useEffect(() => {
     (async () => {
-      try {
+        try {
         // Construire les paramètres de l'URL
         const params = new URLSearchParams();
         if (semestreFilter) params.set('semestre', semestreFilter);
@@ -77,7 +77,7 @@ export default function DealsList() {
           params.set('ownerId', bdFilter); // Le backend doit supporter ce filtre
         }
 
-        const rows = await api.get(`/deals?${params.toString()}`);
+  const rows = await api(`/deals?${params.toString()}`);
         dispatch({ type: "SET_DEALS", payload: rows || [] });
       } catch (e) {
         console.warn("GET /deals failed:", e.message);
@@ -111,7 +111,7 @@ export default function DealsList() {
         dateDerniereModif: new Date().toISOString().slice(0, 10),
       };
 
-      const saved = await api.put(`/deals/${editingDeal.id}`, payload);
+  const saved = await api(`/deals/${editingDeal.id}`, { method: "PUT", body: payload });
       dispatch({ type: "UPDATE_DEAL", payload: saved || payload });
       toast.show("Deal mis à jour avec succès.", "success");
       setEditingDeal(null);
@@ -125,7 +125,7 @@ export default function DealsList() {
     if (!CAN_DELETE) return toast.show("Tu n'as pas le droit de supprimer un deal.", "error");
     if (!confirm("Supprimer ce deal ?")) return;
     try {
-      await api.del(`/deals/${id}`);
+  await api(`/deals/${id}`, { method: "DELETE" });
       dispatch({ type: "DELETE_DEAL", payload: id });
       toast.show("Deal supprimé.", "success");
     } catch (e) {
@@ -211,9 +211,9 @@ export default function DealsList() {
       dateDerniereModif: new Date().toISOString().slice(0, 10),
     }));
 
-    try {
-      for (const d of normalized) {
-        const saved = await api.post("/deals", d);
+        try {
+        for (const d of normalized) {
+        const saved = await api("/deals", { method: "POST", body: d });
         dispatch({ type: "ADD_DEAL", payload: saved || d });
       }
       toast.show(`Import de ${normalized.length} deal(s) réussi.`, "success");

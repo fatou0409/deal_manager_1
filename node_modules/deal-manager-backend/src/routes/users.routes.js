@@ -3,13 +3,14 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import bcrypt from 'bcrypt';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/roles.js';
+import { requireRoles } from '../middleware/roles.js'; // ✅ Importer requireRoles
+import { requirePermission, PERMISSIONS } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
-// Admin list users
-router.get('/', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+// Admin/Manager list users (use permission so Manager allowed when configured)
+router.get('/', authenticate, requirePermission(PERMISSIONS.MANAGE_USERS), async (req, res, next) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
@@ -20,7 +21,7 @@ router.get('/', authenticate, requireRole('ADMIN'), async (req, res, next) => {
 });
 
 // Admin create user
-router.post('/', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+router.post('/', authenticate, requireRoles(['ADMIN']), async (req, res, next) => {
   try {
     const { errors, clean } = validate(req.body, {
       email: { type: 'email', required: true },
@@ -56,7 +57,7 @@ router.post('/', authenticate, requireRole('ADMIN'), async (req, res, next) => {
 });
 
 // Admin update user (role, active, name)
-router.patch('/:id', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+router.patch('/:id', authenticate, requireRoles(['ADMIN']), async (req, res, next) => {
   try {
     const { name, role, isActive, password } = req.body;
     const data = {};
@@ -95,7 +96,7 @@ router.patch('/:id', authenticate, requireRole('ADMIN'), async (req, res, next) 
 });
 
 // Admin delete user
-router.delete('/:id', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+router.delete('/:id', authenticate, requireRoles(['ADMIN']), async (req, res, next) => {
   try {
     await prisma.user.delete({ where: { id: req.params.id } });
     res.status(204).end();

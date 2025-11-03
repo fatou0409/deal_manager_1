@@ -6,7 +6,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { fmtFCFA, uid } from "../../utils/format";
 import { Link } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import { SECTEURS, SEMESTRES } from "../../utils/constants";
 
 export default function PipeList() {
@@ -23,8 +23,8 @@ export default function PipeList() {
   useEffect(() => {
     (async () => {
       try {
-        const rows = await api.get(`/pipes?semestre=${encodeURIComponent(state.selectedSemestre)}`);
-        dispatch({ type: "SET_PIPES", payload: Array.isArray(rows) ? rows : [] });
+  const rows = await api(`/pipes?semestre=${encodeURIComponent(state.selectedSemestre)}`);
+  dispatch({ type: "SET_PIPES", payload: Array.isArray(rows) ? rows : [] });
       } catch (e) {
         console.warn("GET /pipes failed:", e.message);
       }
@@ -52,7 +52,7 @@ export default function PipeList() {
         semestre: state.selectedSemestre,
       };
 
-      const saved = await api.put(`/pipes/${editingPipe.id}`, payload);
+  const saved = await api(`/pipes/${editingPipe.id}`, { method: "PUT", body: payload });
       dispatch({ type: "UPDATE_PIPE", payload: saved || payload });
       toast.show("Pipe mise à jour avec succès.", "success");
       setEditingPipe(null);
@@ -66,7 +66,7 @@ export default function PipeList() {
     if (!CAN_DELETE) return toast.show("Tu n'as pas le droit de supprimer une pipe.", "error");
     if (!confirm("Supprimer cette pipe ?")) return;
     try {
-      await api.del(`/pipes/${id}`);
+  await api(`/pipes/${id}`, { method: "DELETE" });
       dispatch({ type: "DELETE_PIPE", payload: id });
       toast.show("Pipe supprimée.", "success");
     } catch (e) {
@@ -126,8 +126,8 @@ export default function PipeList() {
     }));
 
     try {
-      for (const pipe of normalized) {
-        const saved = await api.post("/pipes", pipe);
+        for (const pipe of normalized) {
+        const saved = await api("/pipes", { method: "POST", body: pipe });
         dispatch({ type: "ADD_PIPE", payload: saved || pipe });
       }
       toast.show(`Import de ${normalized.length} pipe(s) réussi.`, "success");

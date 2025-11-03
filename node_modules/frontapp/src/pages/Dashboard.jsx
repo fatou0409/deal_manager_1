@@ -6,7 +6,7 @@ import Select from "../components/Select";
 import DataTable from "../components/DataTable";
 import { useAuth } from "../auth/AuthProvider";
 import { useStore } from "../store/useStore";
-import { api } from "../utils/api";
+import { api } from "../lib/api";
 
 // Chart.js
 import {
@@ -105,14 +105,14 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       try {
-        const deals = await api.get(`/deals`);
-        dispatch({ type: "SET_DEALS", payload: deals || [] });
+  const deals = await api(`/deals`);
+  dispatch({ type: "SET_DEALS", payload: deals || [] });
 
-        const visits = await api.get(`/visits`);
-        dispatch({ type: "SET_VISITS", payload: visits || [] });
+  const visits = await api(`/visits`);
+  dispatch({ type: "SET_VISITS", payload: visits || [] });
 
         try {
-          const objectives = await api.get(`/objectives`);
+          const objectives = await api(`/objectives`);
           
           if (objectives && Array.isArray(objectives)) {
             const objectivesMap = {};
@@ -135,7 +135,7 @@ export default function Dashboard() {
 
         if (IS_ADMIN_OR_MANAGER) {
           try {
-            const users = await api.get('/users');
+            const users = await api('/users');
             const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
             setBusinessDevelopers(bds);
           } catch (e) {
@@ -417,7 +417,7 @@ export default function Dashboard() {
           
           {user?.role === 'BUSINESS_DEVELOPER' && (
             <div className="mt-3 text-white/70 text-sm">
-              💡 Vos objectifs sont définis par votre manager
+              
             </div>
           )}
         </div>
@@ -644,7 +644,7 @@ export default function Dashboard() {
             </svg>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Mes Objectifs — {semestre}</h3>
-              <p className="text-sm text-gray-600">Définis par votre manager</p>
+              
             </div>
           </div>
           

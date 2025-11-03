@@ -5,19 +5,15 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SEMESTRES } from "../../utils/constants";
 import Select from "../../components/Select";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import FormField from "../../components/FormField";
 import NumberInput from "../../components/NumberInput";
 import { useToast } from "../../components/ToastProvider";
 
 async function saveObjective({ userId, period, values, token }) {
-  const res = await fetch(`/api/objectives`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ userId, period, ...values }),
-  });
-  if (!res.ok) throw new Error("Erreur lors de l'enregistrement des objectifs");
-  return res.json();
+  const body = { userId, period, ...values };
+  const saved = await api(`/objectives`, { method: "PUT", body, token });
+  return saved;
 }
 
 export default function ObjectivesForm() {
@@ -45,8 +41,8 @@ export default function ObjectivesForm() {
       (async () => {
         try {
           const [usersData, objectivesData] = await Promise.all([
-            api.get("/users"),
-            api.get("/objectives"),
+            api('/users'),
+            api('/objectives'),
           ]);
           setUsers(Array.isArray(usersData) ? usersData : []);
           setAllObjectives(Array.isArray(objectivesData) ? objectivesData : []);

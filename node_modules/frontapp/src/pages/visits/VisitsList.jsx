@@ -6,7 +6,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { Link } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 
 // ✅ Helper pour déterminer si c'est une année complète
@@ -54,7 +54,7 @@ export default function VisitsList() {
     if (CAN_VIEW_ALL) {
       (async () => {
         try {
-          const users = await api.get('/users');
+          const users = await api('/users');
           const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
           setBusinessDevelopers(bds);
         } catch (e) {
@@ -75,7 +75,7 @@ export default function VisitsList() {
           params.set('userId', bdFilter); // Le backend doit supporter ce filtre
         }
 
-        const rows = await api.get(`/visits?${params.toString()}`);
+  const rows = await api(`/visits?${params.toString()}`);
         dispatch({ type: "SET_VISITS", payload: rows || [] });
       } catch (e) {
         console.warn("GET /visits failed:", e.message);
@@ -106,7 +106,7 @@ export default function VisitsList() {
         date: toDateInputValue(editingVisit.date),
       };
 
-      const saved = await api.put(`/visits/${editingVisit.id}`, payload);
+  const saved = await api(`/visits/${editingVisit.id}`, { method: "PUT", body: payload });
       dispatch({ type: "UPDATE_VISIT", payload: saved || editingVisit });
       toast.show("Visite mise à jour avec succès.", "success");
       setEditingVisit(null);
@@ -159,7 +159,7 @@ export default function VisitsList() {
                 onClick={async () => {
                   if (!confirm("Supprimer ?")) return;
                   try {
-                    await api.del(`/visits/${r.id}`);
+                    await api(`/visits/${r.id}`, { method: "DELETE" });
                     dispatch({ type: "DELETE_VISIT", payload: r.id });
                     toast.show("Visite supprimée.", "success");
                   } catch (e) {
@@ -191,7 +191,7 @@ export default function VisitsList() {
     }));
     try {
       for (const v of normalized) {
-        const saved = await api.post("/visits", v);
+  const saved = await api("/visits", { method: "POST", body: v });
         dispatch({ type: "ADD_VISIT", payload: saved || v });
       }
       toast.show(`Import de ${normalized.length} visite(s) réussi.`, "success");

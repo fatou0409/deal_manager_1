@@ -19,8 +19,8 @@ function Footer() {
           <div className="font-semibold mb-2">Navigation</div>
           <nav className="grid gap-1">
             <Link className="hover:text-orange-600" to="/">Accueil</Link>
-            <Link className="hover:text-orange-600" to="/dashboard">Dashboard</Link>
-            <Link className="hover:text-orange-600" to="/dashboard">Objectives</Link>
+            <Link className="hover:text-orange-600" to="/dashboard">Tableau de bord</Link>
+            <Link className="hover:text-orange-600" to="/dashboard">Objectifs</Link>
             <Link className="hover:text-orange-600" to="/deals">Deals</Link>
             <Link className="hover:text-orange-600" to="/visits">Visites & Suivi</Link>
             {user?.role === ROLES.ADMIN && (
@@ -37,7 +37,7 @@ function Footer() {
             ) : (
               <>
                 <span className="text-black/60">Connecté en <b>{user.role}</b></span>
-                <Link className="hover:text-orange-600" to="/dashboard">Aller au Dashboard</Link>
+                <Link className="hover:text-orange-600" to="/dashboard">Aller au Tableau de bord</Link>
               </>
             )}
           </nav>

@@ -1,4 +1,4 @@
-// schema.prisma
+// schema.prisma - VERSION SANS DealHistory
 
 // ---------- Client & DB ----------
 generator client {
@@ -27,13 +27,12 @@ model User {
   role         Role    @default(GUEST)
   isActive     Boolean @default(true)
 
-  // Relations
+  // Relations (histories supprimé)
   deals              Deal[]             @relation("UserDeals")
   visits             Visit[]            @relation("UserVisits")
   pipes              Pipe[]             @relation("UserPipes")
   objectives         Objective[]
   objectiveHistories ObjectiveHistory[]
-  histories          DealHistory[]      @relation("UserDealHistories")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -58,28 +57,17 @@ model Deal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🔴 Relations avec ownership (OPTIONNEL au début)
+  // Relations (histories supprimé)
   ownerId String?
   owner   User?   @relation("UserDeals", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  histories DealHistory[]
-  visits    Visit[]
+  visits Visit[]
   
   @@index([ownerId])
   @@index([semestre])
 }
 
-model DealHistory {
-  id     String @id @default(cuid())
-  dealId String
-  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
-
-  changedById String?
-  changedBy   User?   @relation("UserDealHistories", fields: [changedById], references: [id], onDelete: SetNull)
-
-  changedAt DateTime @default(now())
-  diff      Json
-}
+// ✅ DealHistory SUPPRIMÉ COMPLÈTEMENT
 
 enum VisitStatus {
   PLANNED
@@ -98,13 +86,12 @@ model Visit {
   secteur       String
   sujet         String
   accompagnants String?
-  status        VisitStatus @default(PLANNED)  // 🔴 GARDER ce champ !
+  status        VisitStatus @default(PLANNED)
 
   // Relations optionnelles
   dealId String?
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
-  // 🔴 Ownership (OPTIONNEL au début, nommé "UserVisits")
   userId String?
   user   User?   @relation("UserVisits", fields: [userId], references: [id], onDelete: SetNull)
 
@@ -124,7 +111,6 @@ model Pipe {
   budget   Float   @default(0)
   semestre String?
 
-  // 🔴 Ownership (OPTIONNEL au début)
   ownerId String?
   owner   User?   @relation("UserPipes", fields: [ownerId], references: [id], onDelete: SetNull)
 

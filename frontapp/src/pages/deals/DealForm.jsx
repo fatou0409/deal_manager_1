@@ -9,7 +9,7 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 import { uid } from "../../utils/format";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 
 const emptyDeal = {
   id: "",
@@ -79,13 +79,18 @@ export default function DealForm() {
     };
 
     try {
-      console.log("DealForm - Envoi à /deals:", payload);
-      console.log("DealForm - Token:", token ? "présent" : "absent");
+  console.log("DealForm - Envoi à /deals:", payload);
+  console.log("DealForm - Token:", token ? "présent" : "absent");
       
-      const saved = await api.post("/deals", payload, { token });
-      
+  const saved = await api("/deals", { method: "POST", body: payload });
+
+      // ✅ Correction : Toujours utiliser la réponse du serveur (`saved`)
+      // qui contient toutes les informations à jour, y compris le `owner`.
+      // Si `saved` est nul, c'est une erreur qui doit être gérée.
+      if (!saved) throw new Error("La réponse du serveur est vide après la création.");
+
       console.log("DealForm - Réponse:", saved);
-      dispatch({ type: "ADD_DEAL", payload: saved || payload });
+      dispatch({ type: "ADD_DEAL", payload: saved });
       toast.show("Deal créé avec succès.", "success");
       setForm({ ...emptyDeal, semestre: state.selectedSemestre });
     } catch (err) {

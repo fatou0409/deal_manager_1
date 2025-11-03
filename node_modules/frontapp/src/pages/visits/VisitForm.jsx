@@ -7,7 +7,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../utils/api";
+import { api } from "../../lib/api";
 import { uid } from "../../utils/format";
 
 const emptyVisit = {
@@ -68,8 +68,8 @@ export default function VisitForm() {
     };
 
     try {
-      console.log("VisitForm - Envoi à /visits:", payload);
-      const saved = await api.post("/visits", payload, { token }); // ✅ Token ajouté
+  console.log("VisitForm - Envoi à /visits:", payload);
+  const saved = await api("/visits", { method: "POST", body: payload });
       dispatch({ type: "ADD_VISIT", payload: saved || payload });
       toast.show("Visite créée avec succès.", "success");
       setForm({ ...emptyVisit, semestre: state.selectedSemestre });

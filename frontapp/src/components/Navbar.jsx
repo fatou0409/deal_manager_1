@@ -40,15 +40,15 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 shadow-lg bg-gradient-to-r from-orange-600 to-orange-700 text-white animate-fade-in">
+    <header style={{ ['--header-height']: '4rem' }} className="sticky top-0 z-40 h-16 shadow-lg bg-gradient-to-r from-orange-600 to-orange-700 text-white animate-fade-in">
       <div className="mx-auto max-w-7xl px-4">
-        <div className="flex items-center justify-between py-3">
+        <div className="flex items-center justify-between h-16">
           {/* Logo / Marque */}
-          <Link to="/" className="flex items-center gap-3 group">
+            <Link to="/" className="flex items-center gap-3 group h-full">
             <div className="h-10 w-10 rounded-2xl bg-white text-orange-600 grid place-items-center font-extrabold text-lg shadow group-hover:scale-105 transition-transform">
               DM
             </div>
-            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight drop-shadow-sm">
+            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight drop-shadow-sm leading-none">
               DealsManager
             </h1>
           </Link>
