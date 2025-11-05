@@ -67,7 +67,6 @@ model Deal {
   @@index([semestre])
 }
 
-// ✅ DealHistory SUPPRIMÉ COMPLÈTEMENT
 
 enum VisitStatus {
   PLANNED

@@ -7,7 +7,7 @@ export default function AppShell({ badges }) {
     <div className="flex-1 bg-white">
       <div className="mx-auto max-w-7xl flex gap-6 px-4">
         <Sidebar badges={badges} />
-        <main className="flex-1 py-4">
+        <main className="flex-1 py-4 min-w-0">
           <Outlet />
         </main>
       </div>

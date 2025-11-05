@@ -36,6 +36,22 @@ export async function api(path, { method = "GET", token, body } = {}) {
   } catch (e) {
     console.error('Erreur lors du parsing JSON', e);
   }
+  // Si le token a expiré, nettoyer la session côté client pour éviter d'avoir
+  // des états incohérents (token dans localStorage mais 401 côté API).
+  if (res.status === 401 && data && (data.message === 'Token expired' || data.message === 'Invalid token' || data.message === 'Missing token')) {
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } catch (e) {
+      // ignore
+    }
+    // Forcer reload pour que l'app retourne sur la page de login proprement
+    // (le provider React réagira à l'absence de token dans localStorage)
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    throw new Error(data?.message || `HTTP ${res.status}`);
+  }
 
   if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
   return data;
