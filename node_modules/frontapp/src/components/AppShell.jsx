@@ -5,12 +5,10 @@ import Sidebar from "./Sidebar";
 export default function AppShell({ badges }) {
   return (
     <div className="flex-1 bg-white">
-      <div className="mx-auto max-w-7xl flex gap-6 px-4">
-        <Sidebar badges={badges} />
-        <main className="flex-1 py-4 min-w-0">
-          <Outlet />
-        </main>
-      </div>
+      <Sidebar badges={badges} />
+      <main className="ml-64 py-4 px-4 min-w-0">
+        <Outlet />
+      </main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AppShell from "./components/AppShell";
@@ -40,6 +40,8 @@ function ObjectivesProtectedRoute({ children }) {
 
 export default function App() {
   const badges = { deals: undefined, visits: undefined };
+  const location = useLocation();
+  const showFooter = location.pathname === "/";
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900">
@@ -100,7 +102,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 }

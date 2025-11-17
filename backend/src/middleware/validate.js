@@ -45,6 +45,20 @@ function validateInt(value, rules) {
   return { value };
 }
 
+function validateFloat(value, rules) {
+  if (!validator.isFloat(String(value))) {
+    return { error: "Doit être un nombre" };
+  }
+  const num = Number.parseFloat(value);
+  if (rules.min !== undefined && num < rules.min) {
+    return { error: `Doit être ≥ ${rules.min}` };
+  }
+  if (rules.max !== undefined && num > rules.max) {
+    return { error: `Doit être ≤ ${rules.max}` };
+  }
+  return { value: num };
+}
+
 export function validate(fields, schema) {
   const errors = {};
   const clean = {};
@@ -52,6 +66,7 @@ export function validate(fields, schema) {
     email: validateEmail,
     string: validateString,
     int: validateInt,
+    float: validateFloat,
   };
   
   for (const key in schema) {

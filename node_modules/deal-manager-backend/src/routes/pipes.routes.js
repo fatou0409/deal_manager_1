@@ -8,6 +8,7 @@ import {
   ensureOwnerId,
   PERMISSIONS 
 } from "../middleware/permissions.js";
+import { validate } from "../middleware/validate.js";
 
 const router = Router();
 
@@ -57,20 +58,33 @@ router.post("/",
   ensureOwnerId,
   async (req, res, next) => {
     try {
-      const b = req.body || {};
-      
+      const { errors, clean } = validate(req.body || {}, {
+        client: { type: 'string', required: true, minLength: 1 },
+        ic: { type: 'string', required: true },
+        secteur: { type: 'string', required: true },
+        projets: { type: 'string' },
+        budget: { type: 'float' },
+        semestre: { type: 'string' }
+      });
+
+      if (Object.keys(errors).length) {
+        return res.status(400).json({ message: 'Paramètres invalides', errors });
+      }
+
+      const ownerId = req.body.ownerId;
+
       const created = await prisma.pipe.create({
         data: {
-          client: b.client ?? "",
-          ic: b.ic ?? "",
-          secteur: b.secteur ?? "",
-          projets: b.projets ?? null,
-          budget: Number(b.budget ?? 0),
-          semestre: b.semestre ?? "",
-          ownerId: b.ownerId, // Défini par ensureOwnerId
+          client: clean.client,
+          ic: clean.ic,
+          secteur: clean.secteur,
+          projets: clean.projets ?? null,
+          budget: clean.budget === undefined ? 0 : Number(clean.budget),
+          semestre: clean.semestre ?? "",
+          ownerId: ownerId,
         },
       });
-      
+
       res.status(201).json(created);
     } catch (e) { 
       next(e); 
@@ -99,7 +113,7 @@ router.put("/:id",
           ic: b.ic,
           secteur: b.secteur,
           projets: b.projets,
-          budget: b.budget !== undefined ? Number(b.budget) : undefined,
+          budget: b.budget === undefined ? undefined : Number(b.budget),
           semestre: b.semestre,
         },
       });
@@ -126,7 +140,7 @@ router.delete("/:id",
       await prisma.pipe.delete({ where: { id } });
       res.status(204).end();
     } catch (e) { 
-      next(e); lot
+      next(e);
     }
   }
 );

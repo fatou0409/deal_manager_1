@@ -49,8 +49,7 @@ export default function Sidebar({ badges = {} }) {
   const canManageObjectives = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
-    <aside className="w-64 shrink-0">
-  <div className="sticky top-[var(--header-height)] h-[calc(100vh-var(--header-height))] overflow-y-auto bg-white px-4 py-6 shadow-xl rounded-r-3xl border-r border-gray-100">
+    <aside className="fixed left-0 top-[var(--header-height)] w-64 h-[calc(100vh-var(--header-height))] shrink-0 overflow-y-auto bg-white px-4 py-6 shadow-xl rounded-r-3xl border-r border-gray-100 z-40">
         <nav className="flex flex-col gap-1">
           {/* Pages principales */}
           <Item to="/" end icon="home" label="Accueil" />
@@ -75,7 +74,6 @@ export default function Sidebar({ badges = {} }) {
             <Item to="/admin/users" icon="users" label="Gestion des utilisateurs" />
           )}
         </nav>
-      </div>
     </aside>
   );
 }

@@ -1,6 +1,7 @@
 // backend/src/routes/visits.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
+import { validate } from "../middleware/validate.js";
 import { authenticate } from "../middleware/auth.js";
 import { ROLES } from "../middleware/permissions.js";
 
@@ -63,21 +64,32 @@ router.post("/", authenticate, async (req, res, next) => {
       return res.status(403).json({ message: "Accès refusé" });
     }
     
-    const b = req.body || {};
-  const visitUserId = role === ROLES.BUSINESS_DEVELOPER ? userId : (b.userId || userId);
+    const { errors, clean } = validate(req.body || {}, {
+      date: { type: 'string', required: true },
+      type: { type: 'string', required: true },
+      semestre: { type: 'string', required: true },
+      client: { type: 'string', required: true },
+      secteur: { type: 'string', required: true },
+      sujet: { type: 'string', required: true },
+      accompagnants: { type: 'string' },
+      userId: { type: 'string' }
+    });
 
-  // Debug log temporaire pour tracer qui crée la visite et le body reçu
-  console.log('[DEBUG] POST /api/visits - user=', req.user && { id: req.user.id, role: req.user.role }, ' body.userId=', b.userId, ' resolvedUserId=', visitUserId);
-    
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ message: 'Paramètres invalides', errors });
+    }
+
+    const visitUserId = role === ROLES.BUSINESS_DEVELOPER ? userId : (req.body.userId || userId);
+
     const created = await prisma.visit.create({
       data: {
-        date:          b.date ? parseDate(b.date) : new Date(), // ✅ Correction
-        type:          b.type ?? "",
-        semestre:      b.semestre ?? "",
-        client:        b.client ?? "",
-        secteur:       b.secteur ?? "",
-        sujet:         b.sujet ?? "",
-        accompagnants: b.accompagnants ?? null,
+        date:          clean.date ? parseDate(clean.date) : new Date(),
+        type:          clean.type,
+        semestre:      clean.semestre,
+        client:        clean.client,
+        secteur:       clean.secteur,
+        sujet:         clean.sujet,
+        accompagnants: clean.accompagnants ?? null,
         userId:        visitUserId,
       },
       include: {
@@ -91,8 +103,7 @@ router.post("/", authenticate, async (req, res, next) => {
         }
       }
     });
-    console.log('[DEBUG] POST /api/visits - created.id=', created.id, ' userId=', created.userId);
-    
+
     res.status(201).json(created);
   } catch (e) { 
     next(e); 

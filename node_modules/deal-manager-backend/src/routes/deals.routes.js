@@ -1,6 +1,7 @@
 // backend/src/routes/deals.routes.js
 import { Router } from "express";
 import { prisma } from "../utils/prisma.js";
+import { validate } from "../middleware/validate.js";
 import { authenticate } from "../middleware/auth.js";
 import {
   applyOwnershipFilter,
@@ -58,30 +59,44 @@ router.get("/", authenticate, applyOwnershipFilter, async (req, res, next) => {
  */
 router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensureOwnerId, async (req, res, next) => {
   try {
-    const b = req.body || {};
+    const { errors, clean } = validate(req.body || {}, {
+      projet: { type: 'string', required: true, minLength: 1 },
+      client: { type: 'string', required: true, minLength: 1 },
+      secteur: { type: 'string', required: true },
+      semestre: { type: 'string', required: true },
+      statut: { type: 'string', required: true },
+      dateCreation: { type: 'string' },
+      typeDeal: { type: 'string' },
+      commercial: { type: 'string' },
+      supportAV: { type: 'string' },
+      ca: { type: 'float' },
+      marge: { type: 'float' }
+    });
 
-    // Debug log temporaire pour tracer qui crée le deal et le body reçu
-    console.log('[DEBUG] POST /api/deals - user=', req.user && { id: req.user.id, role: req.user.role }, ' bodyOwnerId=', b.ownerId);
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ message: 'Paramètres invalides', errors });
+    }
 
-    // L'ownerId est maintenant géré par le middleware `ensureOwnerId`
-    if (!b.ownerId) {
+    // ownerId est injecté par ensureOwnerId
+    const ownerId = req.body.ownerId;
+    if (!ownerId) {
       return res.status(400).json({ message: "ownerId est manquant et n'a pas été défini par le middleware." });
     }
 
     const created = await prisma.deal.create({
       data: {
-        projet:       b.projet ?? "",
-        client:       b.client ?? "",
-        secteur:      b.secteur ?? "",
-        dateCreation: b.dateCreation ? parseDate(b.dateCreation) : new Date(), // ✅ Correction
-        typeDeal:     b.typeDeal ?? null,
-        commercial:   b.commercial ?? null,
-        supportAV:    b.supportAV ?? null,
-        semestre:     b.semestre ?? "",
-        ca:           Number(b.ca ?? 0), // ✅ Correction
-        marge:        Number(b.marge ?? 0), // ✅ Correction
-        statut:       b.statut ?? "",
-        ownerId:      b.ownerId,
+        projet:       clean.projet,
+        client:       clean.client,
+        secteur:      clean.secteur,
+        dateCreation: clean.dateCreation ? parseDate(clean.dateCreation) : new Date(),
+        typeDeal:     clean.typeDeal ?? null,
+        commercial:   clean.commercial ?? null,
+        supportAV:    clean.supportAV ?? null,
+        semestre:     clean.semestre,
+  ca:           clean.ca === undefined ? 0 : Number(clean.ca),
+  marge:        clean.marge === undefined ? 0 : Number(clean.marge),
+        statut:       clean.statut,
+        ownerId:      ownerId,
       },
       include: {
         owner: {
@@ -94,8 +109,7 @@ router.post("/", authenticate, requirePermission(PERMISSIONS.CREATE_DEAL), ensur
         }
       }
     });
-    console.log('[DEBUG] POST /api/deals - created.id=', created.id, ' ownerId=', created.ownerId);
-    
+
     res.status(201).json(created);
   } catch (e) { 
     next(e); 
