@@ -1,5 +1,6 @@
 // src/pages/deals/DealForm.jsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import FormField from "../../components/FormField";
 import Select from "../../components/Select";
 import NumberInput from "../../components/NumberInput";
@@ -9,7 +10,7 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 import { uid } from "../../utils/format";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 
 const emptyDeal = {
   id: "",
@@ -35,6 +36,7 @@ export default function DealForm() {
   const { state, dispatch } = useStore();
   const { can, token } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const CAN_CREATE = can("deal:create");
   const [form, setForm] = useState({ ...emptyDeal, semestre: state.selectedSemestre });
@@ -92,7 +94,8 @@ export default function DealForm() {
       console.log("DealForm - Réponse:", saved);
       dispatch({ type: "ADD_DEAL", payload: saved });
       toast.show("Deal créé avec succès.", "success");
-      setForm({ ...emptyDeal, semestre: state.selectedSemestre });
+      // Rediriger vers la liste des deals après création
+      navigate('/deals');
     } catch (err) {
       console.error("DealForm - Erreur complète:", err);
       console.error("DealForm - Status:", err.status);

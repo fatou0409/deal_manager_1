@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import EditDeal from "./EditDeal.jsx";
-import { api } from "../lib/api";
+import { api } from "../utils/api";
 
 const DealsList = () => {
   const [deals, setDeals] = useState([]);

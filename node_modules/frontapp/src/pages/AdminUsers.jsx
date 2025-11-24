@@ -1,7 +1,7 @@
 // src/pages/AdminUsers.jsx - VERSION CORRIGÉE : Badge rôle + Modal édition
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
-import { api } from "../lib/api";
+import { api } from "../utils/api";
 import { useToast } from "../components/ToastProvider";
 
 const ROLES = {

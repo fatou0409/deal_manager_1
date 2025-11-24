@@ -6,7 +6,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { fmtFCFA, uid } from "../../utils/format";
 import { Link } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES } from "../../utils/constants";
 
 export default function PipeList() {

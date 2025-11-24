@@ -5,7 +5,7 @@ import { useStore } from "../../store/useStore";
 import { useAuth } from "../../auth/AuthProvider";
 import { SEMESTRES } from "../../utils/constants";
 import Select from "../../components/Select";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import FormField from "../../components/FormField";
 import NumberInput from "../../components/NumberInput";
 import { useToast } from "../../components/ToastProvider";

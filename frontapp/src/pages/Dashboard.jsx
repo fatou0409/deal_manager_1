@@ -6,7 +6,7 @@ import Select from "../components/Select";
 import DataTable from "../components/DataTable";
 import { useAuth } from "../auth/AuthProvider";
 import { useStore } from "../store/useStore";
-import { api } from "../lib/api";
+import { api } from "../utils/api";
 
 // Chart.js
 import {

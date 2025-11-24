@@ -1,5 +1,6 @@
 // src/pages/visits/VisitForm.jsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import FormField from "../../components/FormField";
 import Select from "../../components/Select";
 import TextInput from "../../components/TextInput";
@@ -7,7 +8,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import { uid } from "../../utils/format";
 
 const emptyVisit = {
@@ -25,6 +26,7 @@ export default function VisitForm() {
   const { state, dispatch } = useStore();
   const { can, token } = useAuth(); // ✅ Ajout du token
   const toast = useToast();
+  const navigate = useNavigate();
 
   const CAN_CREATE = can("visit:create");
   const [form, setForm] = useState({ ...emptyVisit, semestre: state.selectedSemestre });
@@ -72,7 +74,8 @@ export default function VisitForm() {
   const saved = await api("/visits", { method: "POST", body: payload });
       dispatch({ type: "ADD_VISIT", payload: saved || payload });
       toast.show("Visite créée avec succès.", "success");
-      setForm({ ...emptyVisit, semestre: state.selectedSemestre });
+      // Rediriger vers la liste des visites après création
+      navigate('/visits');
     } catch (err) {
       console.error("VisitForm - Erreur:", err);
       toast.show(`Échec création visite : ${err.message}`, "error");

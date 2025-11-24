@@ -6,7 +6,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { Link } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES, TYPES_VISITE } from "../../utils/constants";
 
 // ✅ Helper pour déterminer si c'est une année complète
@@ -179,25 +179,46 @@ export default function VisitsList() {
   );
 
   const handleImportVisits = async (rowsLower) => {
-    const normalized = rowsLower.map((r) => ({
-      id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
-      date: r.date || "",
-      type: r.type || "",
-      semestre: r.semestre || state.selectedSemestre,
-      client: r.client || "",
-      secteur: r.secteur || "",
-      sujet: r.sujet || "",
-      accompagnants: r.accompagnants || "",
-    }));
-    try {
-      for (const v of normalized) {
-  const saved = await api("/visits", { method: "POST", body: v });
-        dispatch({ type: "ADD_VISIT", payload: saved || v });
+    let success = 0;
+    let errors = [];
+    for (let i = 0; i < rowsLower.length; i++) {
+      const r = rowsLower[i];
+      // Validation locale
+      if (!r.date || !r.type || !r.semestre || !r.client || !r.secteur || !r.sujet) {
+        errors.push(`Ligne ${i+1}: champ requis manquant.`);
+        continue;
       }
-      toast.show(`Import de ${normalized.length} visite(s) réussi.`, "success");
-    } catch (e) {
-      toast.show(`Import interrompu : ${e.message}`, "error");
+      // Correction du format de date
+      let dateStr = r.date;
+      // Si format ISO complet, extraire la partie YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}T/.test(dateStr)) {
+        dateStr = dateStr.slice(0, 10);
+      }
+      // Vérification du format final
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        errors.push(`Ligne ${i+1}: format de date invalide (${r.date}). Utilise AAAA-MM-JJ.`);
+        continue;
+      }
+      const v = {
+        id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
+        date: dateStr,
+        type: r.type,
+        semestre: r.semestre,
+        client: r.client,
+        secteur: r.secteur,
+        sujet: r.sujet,
+        accompagnants: r.accompagnants || "",
+      };
+      try {
+        const saved = await api("/visits", { method: "POST", body: v });
+        dispatch({ type: "ADD_VISIT", payload: saved || v });
+        success++;
+      } catch (e) {
+        errors.push(`Ligne ${i+1}: ${e.message}`);
+      }
     }
+    if (success > 0) toast.show(`Import de ${success} visite(s) réussi.`, "success");
+    if (errors.length) toast.show(errors.join("\n"), "error");
   };
 
   return (

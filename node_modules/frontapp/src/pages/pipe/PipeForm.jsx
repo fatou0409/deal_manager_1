@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useStore } from "../../store/useStore";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import Select from "../../components/Select";
 import FormField from "../../components/FormField";
 import TextInput from "../../components/TextInput";

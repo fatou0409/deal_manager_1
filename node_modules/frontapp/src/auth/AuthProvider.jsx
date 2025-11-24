@@ -7,28 +7,28 @@ const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // 🔑 NOUVEAU : Hydrater depuis localStorage au démarrage
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Erreur hydratation:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+  // Hydrate synchronously from localStorage so initial render has auth state
+  const [token, setToken] = useState(() => {
+    try {
+      return localStorage.getItem('token') || null;
+    } catch (e) {
+      return null;
     }
-    
-    setLoading(false);
-  }, []);
+  });
+
+  const [user, setUser] = useState(() => {
+    try {
+      const s = localStorage.getItem('user');
+      return s ? JSON.parse(s) : null;
+    } catch (e) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      return null;
+    }
+  });
+
+  // loading is false because we hydrate synchronously
+  const [loading, setLoading] = useState(false);
 
   const login = async ({ email, password }) => {
     // 🔑 IMPORTANT : Utiliser l'URL complète du backend

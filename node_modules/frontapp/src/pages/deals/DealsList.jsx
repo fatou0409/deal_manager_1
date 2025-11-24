@@ -7,7 +7,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { fmtFCFA, uid } from "../../utils/format";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "../../components/ToastProvider";
-import { api } from "../../lib/api";
+import { api } from "../../utils/api";
 import { SECTEURS, SEMESTRES, TYPES_DEAL, COMMERCIAUX, AV_SUPPORTS, STATUTS } from "../../utils/constants";
 
 // ✅ Helper pour déterminer si c'est une année complète

@@ -1,6 +1,6 @@
 // src/components/Deals.jsx
 import React, { useEffect, useState } from "react";
-import { api } from "../lib/api"; // ✅ Import de la fonction API centralisée
+import { api } from "../utils/api";// ✅ Import de la fonction API centralisée
 
 const Deals = () => {
   const [deals, setDeals] = useState([]);
