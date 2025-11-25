@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import bcrypt from 'bcrypt';
 import { authenticate } from '../middleware/auth.js';
-import { requireRoles } from '../middleware/roles.js'; // ✅ Importer requireRoles
+import { requireRoles } from '../middleware/roles.js';
 import { requirePermission, PERMISSIONS } from '../middleware/permissions.js';
 import { validate } from '../middleware/validate.js';
 
@@ -36,15 +36,22 @@ router.post('/', authenticate, requireRoles(['ADMIN']), async (req, res, next) =
     
     const { email, password, name, role } = clean;
     
-    // ✅ CORRIGÉ : utilise BUSINESS_DEVELOPER au lieu de BD
     const allowedRoles = ['ADMIN', 'MANAGER', 'BUSINESS_DEVELOPER', 'GUEST'];
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ message: 'Rôle invalide' });
     }
     
     const hash = await bcrypt.hash(password, 10);
+    
+    // ✅ AJOUT CRITIQUE : Forcer mustChangePassword à true pour tous les nouveaux utilisateurs
     const user = await prisma.user.create({ 
-      data: { email, passwordHash: hash, name, role } 
+      data: { 
+        email, 
+        passwordHash: hash, 
+        name, 
+        role,
+        mustChangePassword: true // ← Changement obligatoire à la première connexion
+      } 
     });
     
     res.status(201).json({ 
@@ -65,7 +72,6 @@ router.patch('/:id', authenticate, requireRoles(['ADMIN']), async (req, res, nex
     if (name !== undefined) data.name = name;
     
     if (role !== undefined) {
-      // ✅ CORRIGÉ : utilise BUSINESS_DEVELOPER au lieu de BD
       const allowedRoles = ['ADMIN', 'MANAGER', 'BUSINESS_DEVELOPER', 'GUEST'];
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ message: 'Rôle invalide' });

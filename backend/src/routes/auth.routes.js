@@ -1,4 +1,4 @@
-// src/routes/auth.routes.js
+// backend/src/routes/auth.routes.js
 import { Router } from 'express';
 import { prisma } from '../utils/prisma.js';
 import bcrypt from 'bcrypt';
@@ -26,9 +26,20 @@ router.post('/login', async (req, res, next) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
-  // Utiliser la durée configurable depuis les variables d'environnement
-  const token = jwt.sign({ id: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name } });
+    // Utiliser la durée configurable depuis les variables d'environnement
+    const token = jwt.sign({ id: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+    
+    // 🔑 IMPORTANT : Retourner mustChangePassword dans la réponse
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        name: user.name,
+        mustChangePassword: !!user.mustChangePassword // ← AJOUT CRITIQUE
+      } 
+    });
   } catch (e) { next(e); }
 });
 
@@ -36,13 +47,38 @@ router.post('/login', async (req, res, next) => {
 router.post('/change-password', authenticate, async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Les deux mots de passe sont requis' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+    }
+    
     const me = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!me) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
     const ok = await bcrypt.compare(currentPassword, me.passwordHash);
-    if (!ok) return res.status(400).json({ message: 'Current password incorrect' });
+    if (!ok) {
+      return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
+    }
 
     const hash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({ where: { id: me.id }, data: { passwordHash: hash } });
-    res.json({ message: 'Password updated' });
+    
+    // 🔑 IMPORTANT : Mettre à jour le mot de passe ET mustChangePassword à false
+    await prisma.user.update({ 
+      where: { id: me.id }, 
+      data: { 
+        passwordHash: hash,
+        mustChangePassword: false // ← Désactiver le flag après changement
+      } 
+    });
+    
+    res.json({ message: 'Mot de passe modifié avec succès' });
   } catch (e) { next(e); }
 });
 

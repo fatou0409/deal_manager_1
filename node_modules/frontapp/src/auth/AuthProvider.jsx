@@ -1,5 +1,5 @@
 // src/auth/AuthProvider.jsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { canRole } from "./permissions";
 import PropTypes from "prop-types";
 
@@ -31,7 +31,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   const login = async ({ email, password }) => {
-    // 🔑 IMPORTANT : Utiliser l'URL complète du backend
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
     
     const res = await fetch(`${API_URL}/auth/login`, {
@@ -51,6 +50,7 @@ export function AuthProvider({ children }) {
       throw new Error(data?.message || `HTTP ${res.status}`);
     }
     
+    // 🔑 IMPORTANT : Inclure mustChangePassword dans safeUser
     const safeUser = {
       id: data.user.id,
       email: data.user.email,
@@ -58,10 +58,10 @@ export function AuthProvider({ children }) {
       name: data.user.name || "",
       firstName: data.user.firstName || "",
       lastName: data.user.lastName || "",
-      mustChangePassword: !!data.user.mustChangePassword,
+      mustChangePassword: !!data.user.mustChangePassword, // ← CRITIQUE
     };
     
-    // 🔑 CRITIQUE : Stocker dans localStorage ET dans le state
+    // Stocker dans localStorage ET dans le state
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(safeUser));
     
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    // 🔑 CRITIQUE : Supprimer de localStorage ET du state
+    // Supprimer de localStorage ET du state
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     
@@ -78,7 +78,7 @@ export function AuthProvider({ children }) {
     setToken(null);
   };
 
-  // Changer le mot de passe
+  // 🔑 Changer le mot de passe ET mettre à jour mustChangePassword
   const changePassword = async ({ currentPassword, newPassword }) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
     
@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}` // 🔑 Utiliser le token
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ currentPassword, newPassword })
     });
@@ -97,6 +97,15 @@ export function AuthProvider({ children }) {
     if (!res.ok) {
       throw new Error(data?.message || `Erreur changement mot de passe`);
     }
+    
+    // 🔑 IMPORTANT : Après changement réussi, mettre à jour mustChangePassword à false
+    const updatedUser = {
+      ...user,
+      mustChangePassword: false
+    };
+    
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
     
     return data;
   };
