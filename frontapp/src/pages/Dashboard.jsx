@@ -1,53 +1,16 @@
-// src/pages/Dashboard.jsx - VERSION FINALE : Chiffres complets + Unité dans en-tête + Dropdown BDs
+// src/pages/Dashboard.jsx 
 import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SEMESTRES } from "../utils/constants";
 import Select from "../components/Select";
-import DataTable from "../components/DataTable";
 import { useAuth } from "../auth/AuthProvider";
 import { useStore } from "../store/useStore";
 import { api } from "../utils/api";
-
-// Chart.js
-import {
-  Chart as ChartJS,
-  BarElement,
-  LineElement,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Bar, Doughnut } from "react-chartjs-2";
-
-ChartJS.register(
-  BarElement,
-  LineElement,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip,
-  Legend
-);
 
 // ✅ Format nombre complet SANS abréviation (avec espaces pour lisibilité)
 function fmtNumber(amount) {
   const num = Number(amount || 0);
   return num.toLocaleString('fr-FR'); // Ex: 1 143 000 000
-}
-
-// ✅ Format FCFA complet (pour tableaux et graphiques)
-function fmtFCFA(amount) {
-  const num = Number(amount || 0);
-  return `${num.toLocaleString('fr-FR')} FCFA`; // Ex: 1 143 000 000 FCFA
-}
-
-function fmtInt(n) {
-  const v = Number(n || 0);
-  return new Intl.NumberFormat("fr-FR").format(Math.round(v));
 }
 
 function normalizeObjective(obj = {}) {
@@ -88,7 +51,6 @@ export default function Dashboard() {
   const { user, can } = useAuth();
 
   const [semestre, setSemestre] = useState(state.selectedSemestre);
-  const [tab, setTab] = useState("table");
   const [loading, setLoading] = useState(true);
   
   const [businessDevelopers, setBusinessDevelopers] = useState([]);
@@ -105,11 +67,11 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       try {
-  const deals = await api(`/deals`);
-  dispatch({ type: "SET_DEALS", payload: deals || [] });
+        const deals = await api(`/deals`);
+        dispatch({ type: "SET_DEALS", payload: deals || [] });
 
-  const visits = await api(`/visits`);
-  dispatch({ type: "SET_VISITS", payload: visits || [] });
+        const visits = await api(`/visits`);
+        dispatch({ type: "SET_VISITS", payload: visits || [] });
 
         try {
           const objectives = await api(`/objectives`);
@@ -206,10 +168,9 @@ export default function Dashboard() {
     const nVisite = visitsS.filter((v) => v.type === "Visite").length;
     const nOne = visitsS.filter((v) => v.type === "One-to-One").length;
     const nWorkshop = visitsS.filter((v) => v.type === "Workshop").length;
-    const byStatus = groupByStatus(dealsS);
 
-    return { ca, marge, nVisite, nOne, nWorkshop, byStatus };
-  }, [dealsWon, visitsS, dealsS]);
+    return { ca, marge, nVisite, nOne, nWorkshop };
+  }, [dealsWon, visitsS]);
 
   // Calcul performance du BD sélectionné
   const selectedBDPerformance = useMemo(() => {
@@ -255,87 +216,11 @@ export default function Dashboard() {
     );
   }, [businessDevelopers, searchBD]);
 
-  const hasAnyData = dealsS.length > 0 || visitsS.length > 0;
-
   const pct = (num, den) => {
     const d = Number(den || 0);
     const n = Number(num || 0);
     if (!d) return "0%";
     return `${Math.round((n / d) * 100)}%`;
-  };
-
-  const tableRows = [
-    { id: "visite",   semestre, type: "Visite",             nbre: sums.nVisite,   objectif: objectives.visite,   taux: pct(sums.nVisite, objectives.visite) },
-    { id: "workshop", semestre, type: "Workshop",           nbre: sums.nWorkshop, objectif: objectives.workshop, taux: pct(sums.nWorkshop, objectives.workshop) },
-    { id: "one",      semestre, type: "One-2-One",          nbre: sums.nOne,      objectif: objectives.one2one,  taux: pct(sums.nOne, objectives.one2one) },
-    { id: "ca",       semestre, type: "Chiffre d'affaires", nbre: sums.ca,        objectif: objectives.ca,       taux: pct(sums.ca, objectives.ca), isMoney: true },
-    { id: "marge",    semestre, type: "Marge",              nbre: sums.marge,     objectif: objectives.marge,    taux: pct(sums.marge, objectives.marge), isMoney: true },
-  ];
-
-  const columns = [
-    { key: "semestre", header: "Semestre" },
-    { key: "type", header: "Type" },
-    { key: "nbre", header: "Nbre", render: (r) => (r.isMoney ? fmtFCFA(r.nbre) : r.nbre) },
-    { key: "objectif", header: "Objectif / Semestre", render: (r) => (r.isMoney ? fmtFCFA(r.objectif) : r.objectif) },
-    { key: "taux", header: "Taux" },
-  ];
-
-  const barData = {
-    labels: ["CA", "Marge"],
-    datasets: [
-      {
-        label: "Réalisé",
-        data: [sums.ca, sums.marge],
-        backgroundColor: "rgba(249,115,22,0.85)",
-      },
-      {
-        label: "Objectif",
-        data: [objectives.ca || 0, objectives.marge || 0],
-        backgroundColor: "rgba(203,213,225,0.85)",
-      },
-    ],
-  };
-  
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: "top" },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => `${ctx.dataset.label}: ${fmtFCFA(ctx.parsed.y)}`,
-        },
-      },
-    },
-    scales: {
-      y: {
-        ticks: { callback: (value) => fmtFCFA(value) },
-      },
-    },
-  };
-
-  const donutLabels = Object.keys(sums.byStatus);
-  const donutData = {
-    labels: donutLabels,
-    datasets: [
-      {
-        data: donutLabels.map((k) => sums.byStatus[k]),
-        backgroundColor: [
-          "rgba(34,197,94,0.85)",
-          "rgba(250,204,21,0.85)",
-          "rgba(239,68,68,0.85)",
-          "rgba(99,102,241,0.85)",
-          "rgba(148,163,184,0.85)",
-        ],
-        borderWidth: 0,
-      },
-    ],
-  };
-  
-  const donutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { position: "bottom" } },
   };
 
   if (loading) {
@@ -412,12 +297,6 @@ export default function Dashboard() {
                   <path d="M9 18l6-6-6-6" strokeWidth="2" />
                 </svg>
               </Link>
-            </div>
-          )}
-          
-          {user?.role === 'BUSINESS_DEVELOPER' && (
-            <div className="mt-3 text-white/70 text-sm">
-              
             </div>
           )}
         </div>
@@ -644,7 +523,6 @@ export default function Dashboard() {
             </svg>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Mes Objectifs — {semestre}</h3>
-              
             </div>
           </div>
           
@@ -677,27 +555,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Onglets */}
-      <div className="flex flex-wrap gap-2 mt-2">
-        {[
-          { id: "table", label: "Tableau" },
-          { id: "charts", label: "Graphiques" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            aria-pressed={tab === t.id}
-            className={`px-3 py-1.5 rounded-full border text-sm transition-all duration-200 focus:ring-2 focus:ring-orange-400 focus:outline-none ${
-              tab === t.id
-                ? "bg-orange-600 text-white border-orange-600 shadow"
-                : "bg-white text-black border-black/10 hover:bg-orange-50 hover:scale-105"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
       
       <style>{`
         @keyframes fade-in {
@@ -706,91 +563,6 @@ export default function Dashboard() {
         }
         .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both; }
       `}</style>
-
-      {/* Vues */}
-      {tab === "table" && (
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-black">Tableau de suivi</h3>
-          <div className="rounded-2xl border border-black/10 bg-white shadow-sm">
-            {!hasAnyData ? (
-              <div className="p-4 text-sm text-black/60">
-                Aucune donnée pour {semestre}. Commence par créer un{" "}
-                <Link to="/deals/new" className="underline">deal</Link> ou une{" "}
-                <Link to="/visits/new" className="underline">visite</Link>.
-              </div>
-            ) : (
-              <DataTable columns={columns} rows={tableRows} />
-            )}
-          </div>
-        </div>
-      )}
-
-      {tab === "charts" && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <div className="xl:col-span-2 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold mb-2">CA & Marge — {semestre} (réalisé vs objectif)</div>
-            <div className="h-64">
-              <Bar data={barData} options={barOptions} />
-            </div>
-            <div className="mt-2 text-xs text-black/60">
-              CA : {fmtFCFA(sums.ca)} / {fmtFCFA(objectives.ca)} — {pct(sums.ca, objectives.ca)} &nbsp;|&nbsp; Marge : {fmtFCFA(sums.marge)} / {fmtFCFA(objectives.marge)} — {pct(sums.marge, objectives.marge)}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold mb-2">Répartition des statuts — {semestre}</div>
-            <div className="h-64">
-              <Doughnut data={donutData} options={donutOptions} />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm xl:col-span-3">
-            <div className="text-sm font-semibold mb-2">Activité de visites — {semestre} (réalisé vs objectif)</div>
-            <div className="h-64">
-              <Bar data={visitsBarData(objectives, sums)} options={visitsBarOptions} />
-            </div>
-            <div className="mt-2 text-xs text-black/60">
-              Visites : {sums.nVisite}/{objectives.visite || 0} &nbsp;|&nbsp; One-to-One : {sums.nOne}/{objectives.one2one || 0} &nbsp;|&nbsp; Workshops : {sums.nWorkshop}/{objectives.workshop || 0}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-// Helpers
-function groupByStatus(deals = []) {
-  const acc = {};
-  for (const d of deals) {
-    const s = (d.statut || "—").trim();
-    acc[s] = (acc[s] || 0) + 1;
-  }
-  return acc;
-}
-
-function visitsBarData(objectives, sums) {
-  const labels = ["Visites", "One-to-One", "Workshops"];
-  return {
-    labels,
-    datasets: [
-      {
-        label: "Réalisé",
-        data: [sums.nVisite, sums.nOne, sums.nWorkshop],
-        backgroundColor: "rgba(249,115,22,0.85)",
-      },
-      {
-        label: "Objectif",
-        data: [objectives.visite || 0, objectives.one2one || 0, objectives.workshop || 0],
-        backgroundColor: "rgba(203,213,225,0.85)",
-      },
-    ],
-  };
-}
-
-const visitsBarOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { position: "top" }, tooltip: { enabled: true } },
-  scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-};
