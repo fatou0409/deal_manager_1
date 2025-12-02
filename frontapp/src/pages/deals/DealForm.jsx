@@ -41,20 +41,12 @@ export default function DealForm() {
   const CAN_CREATE = can("deal:create");
   const [form, setForm] = useState({ ...emptyDeal, semestre: state.selectedSemestre });
 
-  // Debug : afficher la valeur de CAN_CREATE
-  useEffect(() => {
-    console.log("DealForm - CAN_CREATE:", CAN_CREATE);
-    console.log("DealForm - Token présent:", !!token);
-  }, [CAN_CREATE, token]);
-
   useEffect(() => {
     setForm((f) => ({ ...f, semestre: state.selectedSemestre }));
   }, [state.selectedSemestre]);
 
   const submit = async (e) => {
     e.preventDefault();
-    
-    console.log("DealForm - Submit - CAN_CREATE:", CAN_CREATE);
     
     if (!CAN_CREATE) {
       return toast.show("Tu n'as pas le droit de créer un deal.", "error");
@@ -81,9 +73,6 @@ export default function DealForm() {
     };
 
     try {
-  console.log("DealForm - Envoi à /deals:", payload);
-  console.log("DealForm - Token:", token ? "présent" : "absent");
-      
   const saved = await api("/deals", { method: "POST", body: payload });
 
       // ✅ Correction : Toujours utiliser la réponse du serveur (`saved`)
@@ -91,15 +80,11 @@ export default function DealForm() {
       // Si `saved` est nul, c'est une erreur qui doit être gérée.
       if (!saved) throw new Error("La réponse du serveur est vide après la création.");
 
-      console.log("DealForm - Réponse:", saved);
       dispatch({ type: "ADD_DEAL", payload: saved });
       toast.show("Deal créé avec succès.", "success");
       // Rediriger vers la liste des deals après création
       navigate('/deals');
     } catch (err) {
-      console.error("DealForm - Erreur complète:", err);
-      console.error("DealForm - Status:", err.status);
-      console.error("DealForm - Message:", err.message);
       toast.show(`Échec création deal : ${err.message}`, "error");
     }
   };

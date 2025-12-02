@@ -34,17 +34,8 @@ export default function PipeForm() {
     budget: "",
   });
 
-  // Debug : afficher la valeur de CAN_CREATE
-  useEffect(() => {
-    console.log("PipeForm - CAN_CREATE:", CAN_CREATE);
-    console.log("PipeForm - Token présent:", !!token);
-    console.log("PipeForm - can function:", typeof can);
-  }, [CAN_CREATE, token, can]);
-
   const submit = async (e) => {
     e.preventDefault();
-    
-    console.log("PipeForm - Submit - CAN_CREATE:", CAN_CREATE);
     
     if (!CAN_CREATE) {
       return toast.show("Tu n'as pas le droit de créer une pipe.", "error");
@@ -67,18 +58,10 @@ export default function PipeForm() {
     };
 
     try {
-      console.log("PipeForm - Envoi à /pipes:", payload);
-      console.log("PipeForm - Token:", token ? "présent" : "absent");
-      
   const saved = await api("/pipes", { method: "POST", body: payload });
-      
-      console.log("PipeForm - Réponse:", saved);
       toast.show("Pipe créée avec succès.", "success");
       navigate("/pipe");
     } catch (e2) {
-      console.error('PipeForm - Erreur complète:', e2);
-      console.error('PipeForm - Status:', e2.status);
-      console.error('PipeForm - Message:', e2.message);
       toast.show(`Échec création pipe : ${e2.message}`, "error");
     }
   };

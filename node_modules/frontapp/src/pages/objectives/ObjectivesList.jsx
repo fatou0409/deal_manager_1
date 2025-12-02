@@ -128,7 +128,6 @@ export default function ObjectivesList() {
       toast.show("Objectifs mis à jour avec succès.", "success");
       setEditingObjective(null);
     } catch (err) {
-      console.error("Erreur mise à jour objectifs:", err);
       toast.show(`Échec mise à jour : ${err.message}`, "error");
     }
   };

@@ -60,7 +60,7 @@ export default function DealsList() {
           const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
           setBusinessDevelopers(bds);
         } catch (e) {
-          console.warn("Erreur chargement BDs:", e.message);
+          // Erreur non bloquante
         }
       })();
     }
@@ -80,7 +80,7 @@ export default function DealsList() {
   const rows = await api(`/deals?${params.toString()}`);
         dispatch({ type: "SET_DEALS", payload: rows || [] });
       } catch (e) {
-        console.warn("GET /deals failed:", e.message);
+        toast.show(`Erreur chargement deals: ${e.message}`, "error");
       }
     })();
   }, [dispatch, semestreFilter, bdFilter, CAN_VIEW_ALL]);
@@ -116,7 +116,6 @@ export default function DealsList() {
       toast.show("Deal mis à jour avec succès.", "success");
       setEditingDeal(null);
     } catch (err) {
-      console.error("Erreur mise à jour deal:", err);
       toast.show(`Échec mise à jour : ${err.message}`, "error");
     }
   };

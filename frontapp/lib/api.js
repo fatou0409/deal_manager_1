@@ -41,7 +41,7 @@ export async function api(path, { method = "GET", token, body } = {}) {
       data = await res.json();
     }
   } catch (e) {
-    console.warn("Impossible de parser la réponse JSON", e);
+    // Ignorer les erreurs de parsing JSON en production
   }
 
   // Gestion des erreurs HTTP

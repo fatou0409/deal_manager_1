@@ -18,7 +18,6 @@ const Deals = () => {
       const data = await api("/deals"); // ✅ Utilise la fonction api()
       setDeals(data);
     } catch (err) {
-      console.error("Erreur chargement deals:", err);
       setError(err.message);
     } finally {
       setLoading(false);

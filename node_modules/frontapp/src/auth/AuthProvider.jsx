@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     try { 
       data = await res.json(); 
     } catch (e) {
-      console.error('Erreur parsing JSON:', e);
+      // Erreur de parsing JSON, gérée par la suite
     }
     
     if (!res.ok) {
@@ -98,14 +98,21 @@ export function AuthProvider({ children }) {
       throw new Error(data?.message || `Erreur changement mot de passe`);
     }
     
-    // 🔑 IMPORTANT : Après changement réussi, mettre à jour mustChangePassword à false
-    const updatedUser = {
-      ...user,
-      mustChangePassword: false
-    };
-    
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    // 🔑 IMPORTANT : Mettre à jour le user avec les données retournées par le backend
+    if (data.user) {
+      const updatedUser = {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.role,
+        name: data.user.name || "",
+        firstName: data.user.firstName || "",
+        lastName: data.user.lastName || "",
+        mustChangePassword: !!data.user.mustChangePassword
+      };
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
     
     return data;
   };

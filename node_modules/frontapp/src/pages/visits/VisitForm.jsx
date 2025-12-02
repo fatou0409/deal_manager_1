@@ -33,8 +33,7 @@ export default function VisitForm() {
 
   // Debug : afficher la valeur de CAN_CREATE
   useEffect(() => {
-    console.log("VisitForm - CAN_CREATE:", CAN_CREATE);
-    console.log("VisitForm - Token présent:", !!token);
+    // debug info removed for production
   }, [CAN_CREATE, token]);
 
   useEffect(() => {
@@ -44,7 +43,7 @@ export default function VisitForm() {
   const submit = async (e) => {
     e.preventDefault();
     
-    console.log("VisitForm - Submit - CAN_CREATE:", CAN_CREATE);
+    // debug info removed for production
     
     if (!CAN_CREATE) {
       return toast.show("Tu n'as pas le droit de créer une visite.", "error");
@@ -70,14 +69,12 @@ export default function VisitForm() {
     };
 
     try {
-  console.log("VisitForm - Envoi à /visits:", payload);
   const saved = await api("/visits", { method: "POST", body: payload });
       dispatch({ type: "ADD_VISIT", payload: saved || payload });
       toast.show("Visite créée avec succès.", "success");
       // Rediriger vers la liste des visites après création
       navigate('/visits');
     } catch (err) {
-      console.error("VisitForm - Erreur:", err);
       toast.show(`Échec création visite : ${err.message}`, "error");
     }
   };

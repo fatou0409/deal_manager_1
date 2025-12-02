@@ -70,7 +70,7 @@ router.post('/change-password', authenticate, async (req, res, next) => {
     const hash = await bcrypt.hash(newPassword, 10);
     
     // 🔑 IMPORTANT : Mettre à jour le mot de passe ET mustChangePassword à false
-    await prisma.user.update({ 
+    const updatedUser = await prisma.user.update({ 
       where: { id: me.id }, 
       data: { 
         passwordHash: hash,
@@ -78,7 +78,17 @@ router.post('/change-password', authenticate, async (req, res, next) => {
       } 
     });
     
-    res.json({ message: 'Mot de passe modifié avec succès' });
+    // Retourner l'utilisateur mis à jour (avec mustChangePassword: false)
+    res.json({ 
+      message: 'Mot de passe modifié avec succès',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        name: updatedUser.name,
+        mustChangePassword: updatedUser.mustChangePassword
+      }
+    });
   } catch (e) { next(e); }
 });
 

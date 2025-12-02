@@ -30,10 +30,8 @@ const MainContent = () => {
     setError(null);
     try {
       const data = await api("/deals"); // ✅ Utilise la fonction api()
-      console.log("✅ Deals chargés depuis la BDD:", data);
       setDeals(data);
     } catch (err) {
-      console.error("❌ Erreur chargement deals:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -68,14 +66,10 @@ const MainContent = () => {
         supportAV: form.supportAV || null,
       };
 
-      console.log("📤 Envoi du deal:", payload);
-      
       const newDeal = await api("/deals", { 
         method: "POST", 
         body: payload 
       }); // ✅ Utilise la fonction api()
-      
-      console.log("✅ Deal créé:", newDeal);
       
       setDeals([newDeal, ...deals]); // Ajouter en début de liste
       
@@ -96,7 +90,6 @@ const MainContent = () => {
       
       alert("✅ Deal créé avec succès !");
     } catch (err) {
-      console.error("❌ Erreur ajout deal:", err);
       alert(`❌ Erreur: ${err.message}`);
     }
   };
@@ -108,14 +101,11 @@ const MainContent = () => {
     }
 
     try {
-      console.log("🗑️ Suppression du deal:", id);
       await api(`/deals/${id}`, { method: "DELETE" }); // ✅ Utilise la fonction api()
-      console.log("✅ Deal supprimé");
       
       setDeals(deals.filter((deal) => deal.id !== id));
       alert("✅ Deal supprimé avec succès !");
     } catch (err) {
-      console.error("❌ Erreur suppression deal:", err);
       alert(`❌ Erreur: ${err.message}`);
     }
   };

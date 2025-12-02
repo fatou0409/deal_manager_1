@@ -120,7 +120,6 @@ export default function ObjectivesForm() {
 
       toast.show(`Objectifs pour ${savedObjective.user.name} sauvegardés.`, "success");
     } catch (err) {
-      console.error("Erreur sauvegarde objectifs:", err);
       toast.show("Erreur lors de l'enregistrement des objectifs.", "error");
     }
   };

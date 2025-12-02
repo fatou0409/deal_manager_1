@@ -45,12 +45,8 @@ export default function AdminUsers() {
   useEffect(() => {
     setLoadingUsers(true);
     api('/users')
-      .then(data => {
-        console.log('Utilisateurs chargés:', data);
-        setUsers(data);
-      })
+      .then(setUsers)
       .catch(err => {
-        console.error('Erreur chargement:', err);
         toast.show("Erreur chargement utilisateurs", "error");
       })
       .finally(() => setLoadingUsers(false));
@@ -101,7 +97,6 @@ export default function AdminUsers() {
       toast.show(`Utilisateur créé: ${email}`, "success");
       setForm({ email: "", role: ROLES.BUSINESS_DEVELOPER, password: genPwd() });
     } catch (err) {
-      console.error('Erreur création:', err);
       toast.show(err.message || "Erreur création utilisateur", "error");
     }
   };
@@ -131,7 +126,6 @@ export default function AdminUsers() {
       toast.show("Utilisateur mis à jour", "success");
       setEditingUser(null);
     } catch (err) {
-      console.error('Erreur mise à jour:', err);
       toast.show(err.message || "Erreur mise à jour utilisateur", "error");
     }
   };
@@ -148,7 +142,6 @@ export default function AdminUsers() {
       setUsers((prev) => prev.filter((u) => u.id !== id));
       toast.show("Utilisateur supprimé", "success");
     } catch (err) {
-      console.error('Erreur suppression:', err);
       toast.show(err.message || "Erreur suppression utilisateur", "error");
     }
   };
@@ -160,7 +153,6 @@ export default function AdminUsers() {
       const u = users.find(u => u.id === id);
       toast.show(`Nouveau mot de passe pour ${u?.email} : ${pwd}`, "success");
     } catch (err) {
-      console.error('Erreur reset password:', err);
       toast.show(err.message || "Erreur réinit. mot de passe", "error");
     }
   };

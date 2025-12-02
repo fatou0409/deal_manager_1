@@ -58,7 +58,7 @@ export default function VisitsList() {
           const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
           setBusinessDevelopers(bds);
         } catch (e) {
-          console.warn("Erreur chargement BDs:", e.message);
+          // Erreur non bloquante
         }
       })();
     }
@@ -78,7 +78,7 @@ export default function VisitsList() {
   const rows = await api(`/visits?${params.toString()}`);
         dispatch({ type: "SET_VISITS", payload: rows || [] });
       } catch (e) {
-        console.warn("GET /visits failed:", e.message);
+        toast.show(`Erreur chargement visites: ${e.message}`, "error");
       }
     })();
   }, [dispatch, semestreFilter, bdFilter, CAN_VIEW_ALL]);
@@ -111,7 +111,6 @@ export default function VisitsList() {
       toast.show("Visite mise à jour avec succès.", "success");
       setEditingVisit(null);
     } catch (err) {
-      console.error("Erreur mise à jour visite:", err);
       toast.show(`Échec mise à jour : ${err.message}`, "error");
     }
   };

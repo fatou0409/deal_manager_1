@@ -1,5 +1,5 @@
 // src/pages/ChangePassword.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -18,6 +18,18 @@ export default function ChangePassword() {
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   const isFirstLogin = user?.mustChangePassword;
+
+  // 🔑 CRITIQUE : Si le changement de mot de passe a réussi et mustChangePassword passe à false
+  // alors naviguer immédiatement vers le dashboard
+  useEffect(() => {
+    if (success && !isFirstLogin && isFirstLogin !== undefined) {
+      // Le flag a été mis à jour à false, donc on peut naviguer
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 1500); // Garder 1.5s pour voir le message de succès
+      return () => clearTimeout(timer);
+    }
+  }, [success, isFirstLogin, navigate]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -47,24 +59,8 @@ export default function ChangePassword() {
       await changePassword({ currentPassword, newPassword });
       
       setSuccess("Mot de passe modifié avec succès !");
+      // Le useEffect gérera la redirection une fois que le state du user est mis à jour
       
-      // Si c'était la première connexion, mettre à jour le flag
-      if (isFirstLogin) {
-        // Mettre à jour l'utilisateur dans localStorage
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        storedUser.mustChangePassword = false;
-        localStorage.setItem('user', JSON.stringify(storedUser));
-        
-        // Rediriger vers le dashboard après 2 secondes
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 2000);
-      } else {
-        // Si c'est un changement volontaire, réinitialiser le formulaire
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
     } catch (err) {
       setError(err.message || "Échec du changement de mot de passe");
     } finally {

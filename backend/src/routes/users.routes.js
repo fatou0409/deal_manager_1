@@ -43,14 +43,14 @@ router.post('/', authenticate, requireRoles(['ADMIN']), async (req, res, next) =
     
     const hash = await bcrypt.hash(password, 10);
     
-    // ✅ AJOUT CRITIQUE : Forcer mustChangePassword à true pour tous les nouveaux utilisateurs
+    // ✅ AJOUT CRITIQUE : Forcer mustChangePassword à true pour tous les utilisateurs NON-ADMIN
     const user = await prisma.user.create({ 
       data: { 
         email, 
         passwordHash: hash, 
         name, 
         role,
-        mustChangePassword: true // ← Changement obligatoire à la première connexion
+        mustChangePassword: role !== 'ADMIN' // ← Changement obligatoire SAUF pour ADMIN
       } 
     });
     

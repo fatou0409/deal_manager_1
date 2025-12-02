@@ -26,7 +26,7 @@ export default function PipeList() {
   const rows = await api(`/pipes?semestre=${encodeURIComponent(state.selectedSemestre)}`);
   dispatch({ type: "SET_PIPES", payload: Array.isArray(rows) ? rows : [] });
       } catch (e) {
-        console.warn("GET /pipes failed:", e.message);
+        toast.show(`Erreur chargement pipes: ${e.message}`, "error");
       }
     })();
   }, [state.selectedSemestre, dispatch]);
@@ -57,7 +57,6 @@ export default function PipeList() {
       toast.show("Pipe mise à jour avec succès.", "success");
       setEditingPipe(null);
     } catch (err) {
-      console.error("Erreur mise à jour pipe:", err);
       toast.show(`Échec mise à jour : ${err.message}`, "error");
     }
   };

@@ -13,7 +13,7 @@ const DealsList = () => {
         const data = await api("/deals");
         if (mounted) setDeals(data || []);
       } catch (err) {
-        console.error("Erreur chargement deals:", err);
+        // Gérer l'erreur de chargement
       }
     })();
     return () => { mounted = false };
@@ -25,7 +25,6 @@ const DealsList = () => {
       await api(`/deals/${id}`, { method: "DELETE" });
       setDeals(deals.filter(d => d.id !== id));
     } catch (err) {
-      console.error("Erreur suppression deal:", err);
       alert(`Erreur suppression: ${err.message}`);
     }
   };

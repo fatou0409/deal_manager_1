@@ -84,17 +84,13 @@ export function StoreProvider({ children }) {
   React.useEffect(() => {
     // ✅ Attendre que AuthProvider ait fini de charger
     if (loading) {
-      console.log('⏳ StoreProvider: En attente du chargement auth...');
       return;
     }
     
     // On ne charge les données que si on a un token
     if (!token) {
-      console.log('⚠️ StoreProvider: Pas de token');
       return;
     }
-
-    console.log('✅ StoreProvider: Hydratation avec token');
 
     async function hydrate() {
       try {
@@ -118,7 +114,7 @@ export function StoreProvider({ children }) {
           } 
         });
       } catch (e) {
-        console.error('❌ Hydratation du store échouée', e);
+        // L'erreur sera probablement gérée par un toast dans `api.js`
       }
     }
     hydrate();

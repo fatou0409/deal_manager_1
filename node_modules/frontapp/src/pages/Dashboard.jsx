@@ -92,7 +92,7 @@ export default function Dashboard() {
             dispatch({ type: "SET_OBJECTIVES", payload: currentUserObjectives });
           }
         } catch (objError) {
-          console.warn("⚠️ Erreur chargement objectifs:", objError.message);
+          // Les erreurs d'objectifs ne sont pas bloquantes
         }
 
         if (IS_ADMIN_OR_MANAGER) {
@@ -101,12 +101,12 @@ export default function Dashboard() {
             const bds = users.filter(u => u.role === 'BUSINESS_DEVELOPER');
             setBusinessDevelopers(bds);
           } catch (e) {
-            console.warn("⚠️ Erreur chargement BDs:", e.message);
+            // Erreur non bloquante si les BDs ne se chargent pas
           }
         }
 
       } catch (e) {
-        console.error("❌ Erreur chargement Dashboard:", e);
+        // Gérer l'erreur de chargement principale, par exemple avec un message à l'utilisateur
       } finally {
         setLoading(false);
       }
